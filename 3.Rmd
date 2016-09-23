@@ -1,0 +1,435 @@
+---
+title: "Chapter 3: One-parameter models"
+author: "Jesse Mu"
+date: "September 17, 2016"
+output:
+  html_document:
+    toc: true
+    toc_float: true
+    highlight: pygments
+---
+
+<!-- Setup -->
+
+<script type="text/x-mathjax-config">
+MathJax.Hub.Config({
+  TeX: { 
+      equationNumbers: {
+            autoNumber: "all"
+      } 
+  }
+});
+</script>
+
+```{r echo=FALSE, message=FALSE}
+knitr::opts_chunk$set(fig.align = 'center', message = FALSE)
+library(knitr)
+library(ggplot2)
+library(cowplot)
+library(reshape)
+```
+
+<!-- Begin writing -->
+
+One-parameter model - class of distributions w/ single unknown parameter. We
+will discuss the binomial and Poisson models; I will likely also talk about exponential models.
+
+# The Binomial model
+
+1998 General Social Survey: Females over age 65, $1 = \text{happy}$, $0 = 
+\text{unhappy}$. $n = 129$. So let the survey be 129 exchangeable random 
+variables $Y_1, \dots, Y_{129}$.
+
+Under our model, conditioned on some $\theta$, $Y_i$ are i.i.d. binary random
+variables with probability $\theta$. So the joint probability is
+
+\begin{align}
+P(y_1, \dots, y_{129} \mid \theta) = \theta^{\sum_{i} y_i} (1 - \theta)^{129 -
+\sum_i y_i}
+\end{align}
+
+Now we need to specify our prior distribution
+
+## Uniform prior
+
+Imagine our prior is $\theta \sim \text{Uniform}(0, 1)$. What this means is
+$P(a \leq \theta \leq b) = P(a + c \leq \theta \leq b + c)$ for all compatible
+$a, b, c$. In other words, the probability of theta falling in an interval of a
+given width is constant, regardless of where the interval is.
+
+Then, notice
+
+\begin{align}
+P(\theta \mid y_1, \dots, y_{129}) &= \frac{P(y_1, \dots, y_{129} \mid \theta) P(\theta)}{P(y_1, \dots, y_{129})} \\
+&= \frac{P(y_1, \dots, y_{129} \mid \theta)}{P(y_1, \dots, y_{129})} & (\text{since $P(\theta)$ is constant for all $\theta$}) \\
+&\propto p(y_1, \dots, y_{129} \mid \theta)
+\end{align}
+
+so $p(\theta \mid Y)$ and $p(y \mid \theta)$ have the same shape (see MLE
+discussion in Chapter 1).
+
+## Data and posterior distribution
+
+Say the observed proportion is 118 happy out of 129 (91%). Our sampling model
+for some fixed $\theta$ is
+
+\begin{align}
+p(y \mid \theta) = \theta^{118} (1 - \theta)^{11}
+\end{align}
+
+linking this back to Bayes' rule above, we have the posterior probability
+
+\begin{align}
+p(\theta \mid y) = \frac{\theta^{118} (1 - \theta)^{11}}{p(y)}
+\end{align}
+
+We will often (WHEN would we not normalize?) want to be more precise than this and know about the scale
+of the posterior probability, not just the shape. This requires calculating $p(y) = p(y_1, \dots, y_{129})$:
+
+\begin{align}
+1 &= \int_0^1 p(\theta \mid y) \; d\theta & (\text{Law of total probability}) \\
+&= \int_0^1 \theta^{111} (1 - \theta)^{11} / p(y) \; d\theta \\
+&= \frac{1}{p(y)} \int_0^1 \theta^{118} (1 - \theta)^11 \; d\theta & (\text{Note
+$p(y)$ is constant for fixed $y$})\\
+&= \frac{1}{p(y)} \frac{\Gamma(119) \Gamma(12)}{\Gamma(131)} & (\text{From calculus})\\
+\end{align}
+
+so $p(y) = \frac{\Gamma(119) \Gamma(12)}{\Gamma(131)} \approx 2.89 \times
+10^{-18}$. Since our $y_i$ are exchangeable, this holds true for any sequences
+of $y_i$ with 188 ones and 11 zeros.
+
+So, finally, the posterior probability is 
+
+\begin{align}
+p(\theta \mid y) &= \frac{\Gamma(131)}{\Gamma(119) \Gamma(12)} \theta^{118} (1 -
+\theta)^11 \\
+&= \frac{\Gamma(131)}{\Gamma(119) \Gamma(12)} \theta^{119 - 1} (1 - \theta)^{12 - 1} & (\text{Beta parameterization})\\
+\end{align}
+
+which happens to be a *beta distribution* with parameters $\alpha = 119$ and
+$\beta = 12$. For PDF, mode, expectation, etc. see
+[Wikipedia](https://en.wikipedia.org/wiki/Beta_distribution). In our case, our posterior looks like:
+
+```{r echo=FALSE}
+library(ggrepel)
+alpha = 119
+beta = 12
+
+posterior = data.frame(
+  theta = seq(0, 1, by = 0.001),
+  density = dbeta(seq(0, 1, by = 0.001), alpha, beta)
+)
+
+stats = data.frame(
+  theta = round(c(
+    # This formula is only for alpha, beta > 1
+    (alpha - 1)/((alpha - 1) + (beta - 1)),
+    alpha / (alpha + beta)
+  ), 3),
+  statistic = c('mode', 'expectation')
+)
+
+ggplot(posterior, aes(x = theta, y = density)) +
+  geom_line() +
+  geom_vline(data = stats,
+             mapping = aes(xintercept = theta, lty = statistic)) +
+  geom_label_repel(data = stats,
+                   mapping = aes(x = theta, y = 12, label = theta),
+                   force = 50)
+```
+
+## Inference for exchangeable binary data (i.e. more generally)
+
+Recall for our binary data $Y_1, \dots, Y_n$ that
+
+\begin{align}
+p(\theta \mid y) &= \frac{p(y \mid \theta) p(\theta)}{p(y)} \\
+&= \frac{\theta^{\sum y_i} (1 - \theta)^{n - \sum y_i} p(\theta)}{p(y)} & \text{(Since i.i.d.)} \\
+\end{align}
+
+Importantly, the quantity $\sum_{i = 1}^n Y_i$ is the only statistic that is 
+needed to calculate posterior probabilities of $\theta$. So it is a *sufficient
+statistic* for making inference about $\theta$. The statistic $Y = \sum Y_i$ has
+a binomial distribution with parameters $(n, \theta)$. Then,
+
+\begin{align}
+p(y \mid \theta) &= {n \choose y} \theta^y (1 - \theta)^{n - y}
+\end{align}
+
+> Note: I skip the general derivation of posterior probabilities for uniform
+> prior here, since a uniform prior is also a $\text{Beta}(a, b)$.
+
+Now let's calculate the posterior probability $p(\theta \mid y)$ when
+$p(\theta)$ is *not* uniform; in particular, when our prior on $\theta$ is a
+Beta distribution ($\theta \sim \text{Beta}(a,
+b)$):
+
+\begin{align}
+p(\theta \mid y) &= \frac{p(\theta) p(y \mid \theta)}{p(y)} & \\
+&= \frac{1}{p(y)} \times \underbrace{\frac{\Gamma(a + b)}{\Gamma(a)
+\Gamma(b)}\theta^{a - 1}(1 - \theta)^{b - 1}}_{\text{PDF of $\text{Beta}(a,
+b)$}} \times \underbrace{{n \choose y} \theta^y (1 - \theta)^{n -
+y}}_{\text{$p(y \mid \theta)$ above}} & \\
+&= c \times \theta^{a + y - 1} (1 - \theta)^{b + n - y - 1} & \text{(Combine $\theta$s)} \
+\end{align}
+
+where $c = f(n, y, a, b)$ is just compressing the other stuff in the equation
+into a constant, since it doesn't depend on $\theta$.
+Now, notice that the term with $\Gamma$s in the above
+equation is the PDF of $\theta \sim \text{Beta}(a, b)$, which can also be
+expressed with a constant $c = f(a, b)$: $p(\theta) = c \theta^{a - 1}(1
+- \theta)^{b - 1}$. Notice that this looks just like the equation above: thus,
+$p(\theta)$ and $p(\theta \mid y)$ are both proportional to $\theta^{a - 1} (1 -
+\theta)^{b - 1}$ by some constant $c$.
+
+
+Now, since we know that as probability distributions, $\int p(\theta) = \int
+p(\theta \mid y) = 1$, we also know that the functions share the same *scale*,
+which means that $p(\theta \mid y)$ is actually a Beta PDF!
+
+$$
+(\theta \mid y) \sim \text{Beta}(a + y, b + n - y).
+$$
+
+We therefore call Beta distributions **conjugate** priors for Binomial
+distributions.
+
+### Conjugacy
+
+> **Conjugacy**. A class $\mathcal{P}$ of prior distributions for $\theta$ are
+> *conjugate priors* of a sampling model $p(y \mid \theta)$ if $$ p(\theta) \in
+\mathcal{P} \implies p(\theta \mid y) \in \mathcal{P}.$$
+
+Conjugate priors are very convenient and making certain calculations easy, since
+there is some convenient closed form solution for the distribution of a model
+posterior given a model prior and observed data.
+
+Now, if you remember from Chatper 1, since the expectation of a Beta
+distribution is $\frac{a}{a + b}$,
+
+\begin{align}
+\mathbb{E}(\theta \mid y) &= \frac{a + y}{a + b + n} \\
+&= \frac{a + b}{a + b + n} \frac{a}{a + b} + \frac{n}{a + b + n}\frac{y}{n} \\
+\end{align}
+
+Where $\theta_0 = \frac{a}{a + b}$ can be seen as our "prior expectation",
+$\frac{y}{n}$ is the sample mean, and $w = a + b$ can be seen as the strength of
+belief in our prior. I leave the equation expressed above with the $a$s and $b$s
+expanded because another intuitive way of thinking about the problem is by
+thinking of $a$ as the "prior number of 1s", $b$ as the "prior number of 0s",
+and $a + b$ as the "prior sample size". If you play around with the equation
+above, seeing how the values change with various $a$ and $b$ prior choices,
+you'll notice it has several nice properties that intuitively balance the
+expectation and strength of our prior with the amount of data we receive.
+
+### Prediction
+
+Assume we've already seen data $y_1, \dots y_n$ and we want to predict value of
+the next observation $\tilde{Y}$. Intuitively we should predict $\tilde{Y} = 1$
+with probability equal to the expectation of $\theta$ given our data (according
+to the Bayesian framework). These calculations confirm this:
+
+\begin{align}
+p(\tilde{Y} = 1 \mid y) &= \int p(\tilde{Y} = 1, \theta \mid y) \; d\theta & \text{(LTP)} \\
+&= \int p(\tilde{Y} = 1 \mid \theta, y) p(\theta \mid y) \; d\theta & \text{(Chain rule)} \\
+&= \int \theta p(\theta \mid y) & \text{(Since $\tilde{Y}$ is binary)} \\
+&= \mathbb{E}(\theta \mid y).
+\end{align}
+
+Note that using the expectation instead of the mode is nice, for examples where
+we have a uniform $\text{Beta}(1, 1)$ prior and we observe $Y = 0$. Then,
+
+\begin{align}
+\mathbb{E}(\theta \mid Y = 0) &= \frac{2}{2 + n}\frac{1}{2} + \frac{n}{2 +
+n}\frac{y}{n} = \frac{1}{2 + n}\\
+\theta_{MAP} &= \frac{y}{n} = 0 \\
+\end{align}
+
+And clearly the expectation is more sensible as a predictor of future $\tilde{Y}$. But $\theta_{MAP}$ is not as unreasonable when there is a non-uniform prior...
+
+## Confidence regions
+
+See [this StackExchange question](http://stats.stackexchange.com/questions/2272/whats-the-difference-between-a-confidence-interval-and-a-credible-interval) for a really interesting discussiona bout the difference between Bayesian and frequentist confidence intervals.
+
+Bayesian confidence interval is an interval $[l(y), u(y)]$ with the following property:
+
+\begin{align}
+P(l(y) < \theta < u(y) \mid Y = y) = .95
+\end{align}
+
+Intuitively, a Bayesian confidence interval quantifies our uncertainty about the
+true value of the parameter we are estimating.
+
+Frequentist confidence interval is an interval $[l(Y), u(Y)]$ with the following
+property:
+
+\begin{align}
+P(l(Y) < \theta < u(Y) \mid theta) = .95
+\end{align}
+
+Intuitively, a Frequentist confidence interval quantifies our uncertainty about 
+the measurement we have made of the parameter with a *fixed* true value.
+
+Which interval is better is of course debated heavily.
+
+To construct Bayesian confidence intervals, an easy way of doing so is to select
+quantiles of the posterior probability distribution such that the area in the
+interval under the curve is $1 - \alpha$, where $\alpha$ is the desired confidence level:
+
+```{r}
+# Uninformative prior, observe 10 variables with 2 1s
+a = 1
+b = 1
+n = 10
+y = 2
+
+quantiles = data.frame(q = qbeta(c(0.025, 0.975), a + y, b + n - y))
+
+df = data.frame(
+  theta = seq(0, 1, by = 0.001),
+  p = dbeta(seq(0, 1, by = 0.001), a + y, b + n - y)
+)
+
+ggplot(df, aes(x = theta, y = p)) +
+  geom_line() +
+  geom_vline(data = quantiles, mapping = aes(xintercept = q))
+```
+
+However, since some of the values for theta *outside* of the interval have 
+higher probailities than values of theta *inside* the interval, another option 
+is to force "symmetry" of heights by searching for the **highest posterior 
+density** region, which can be intuitively found by drawing a horizontal line 
+down the density until the region contained by the line is $1 - \alpha$% of the 
+entire curve.
+
+# The Poisson model
+
+This is for measurements that have values that are whole numbers, rather than just 1 or 0 (example: number of children).
+
+Recall the PDF of a Poisson distribution - if $Y \sim \text{Poisson}(\theta)$ then
+
+- $p(Y = y \mid \theta) = \theta^y e^{-\theta} / y!$
+- $\mathbb{E}(Y) = \text{Var}(Y) = \theta$
+
+## Posterior inference
+
+Just like how $Y = \sum Y_i$ is a sufficient statistic for $n$ independent 
+Bernoulli trials, there exists a sufficient statistic for a sample of $n$ i.i.d.
+Poisson variables. Notice
+
+\begin{align}
+P(Y_1 = y_1, \dots, Y_n = y_n \mid \theta) &=
+\prod_i p(y_i \mid \theta) \\
+&= \prod_i \frac{\theta^{y_i} e^{-\theta}}{y_i !} \\
+&= \theta^{\sum_i y_i} e^{-n \theta} \prod_i \frac{1}{y_i !} & \\
+\end{align}
+
+When we compare two values of $\theta$,
+
+\begin{align}
+\frac{p(\theta_a \mid y_1, \dots, y_n)}{p(\theta_b \mid y_1, \dots, y_n)} &= \dots
+\end{align}
+
+notice that the $\prod_i 1 / y_i !$ term is the same in that ratio, and thus
+cancels out. Then the $\theta_{a, b}^{\sum_i y_i}$ terms are the only terms remaining in the
+fraction, and thus $\sum_i y_i$ is a sufficient statistic. This sufficient
+statistic is a little more interesting than the Bernoulli case - consider that
+it doesn't matter what the individual values of $y_i$ are (if one is very large,
+one is very small, or they all look the same) - inference on $\theta$ is
+possible with just the aggregate sum.
+
+### Conjugate prior
+
+Using Bayes' rule and the sampling model above, we have
+
+\begin{align}
+p(\theta \mid y) &= \frac{p(\theta)p(y \mid \theta)}{p(y)} \\
+&\propto p(\theta) p(y \mid \theta) \\
+&\propto p(\theta) \times \theta^{\sum y_i} e^{-n\theta} \\
+\end{align}
+
+We are looking for some distribution of $p(\theta)$ that makes the posterior as
+calculated using the above the same distribution as $p(\theta)$ itself. That
+family of distributions is the Gamma family. If $\theta \sim \text{Gamma}(a, b)$, then
+
+- $p(\theta) = \frac{b^a}{\Gamma(a)}\theta^{a - 1} e^{-b \theta}$
+- $\mathbb{E}(\theta) = a/b$
+- $\text{Var}(\theta) = a/b^2$
+
+There are also several alternative parameterizations ([Wikipedia](https://en.wikipedia.org/wiki/Gamma_distribution#Applications)).
+
+To prove conjugacy, we have
+
+\begin{align}
+p(\theta \mid y) &= \frac{p(\theta) p(y \mid \theta)}{p(y)} \\
+&= \underbrace{\left( \frac{b^a}{\Gamma(a)} \theta^{a - 1} e^{-b \theta}
+\right)}_{p(\theta)} \underbrace{\left( \theta^{\sum y_i} e^{-n \theta} \prod_i
+\frac{1}{y_i !} \right)}_{p(y \mid \theta)} \left( \frac{1}{p(y)} \right) \\
+&= c \times \left( \theta^{a - 1 + \sum y_i} e^{-(b + n) \theta} \right)
+\end{align}
+
+Where $c = f(y, a, b)$ is throwing all of the stuff that doesn't depend on
+$\theta$ into some normalizing constant such that $\int p(\theta \mid y) = 1$.
+Like the Binomial model, we recognize from the proportionality to $\theta^{a - 1} e^{-b \theta}$ that the posterior distribution of $\theta$ is Gamma distributed. Specifically
+
+\begin{align}
+\theta \mid y \sim \text{Gamma}(a + \sum_i y_i, b + n)
+\end{align}
+
+### Todo: Expectation and predictive distribution
+
+## Example: Birth Rates
+
+In the 1990s, did women with college degrees have different numbers of children 
+than women without college degrees? We sample $n_1$ women without college 
+degrees, denoted $Y_{1,1}, \dots, Y_{n_1, 1}$, and $n_2$ women with college 
+degrees, $Y_{1, 2}, \dots, Y_{n_2, 2}$. For some parameter $\theta$ we can model
+the number of children for each woman as being i.i.d $\text{Poisson}(\theta_1)$ 
+and $\text{Poisson}(\theta_2)$, respectively. We may be interested in conducting
+hypothesis tests to see whether or not these $\theta$ are different.
+
+Recall that, in this two samples, the *sufficient* statistic is simply the sum
+of all of the $Y_i$. Say we observe
+
+- No college: $n_1 = 111$, $\sum Y_i = 217$, $\sum Y_i / n_1 = 1.95$ (this is just useful for intuition)
+- College: $n_2 = 44$, $\sum Y_i = 66$, $\sum Y_i / n_2 = 1.50$
+
+Say our prior on both $\theta$ is $\text{Gamma(a = 2, 1)}$, which is lightly
+centered on ~1. You can toy around with choices of different priors by changing
+`a` and `b` below:
+
+```{r}
+a = 2
+b = 1
+n1 = 111
+sy1 = 217
+n2 = 44
+sy2 = 66
+df = data.frame(
+  theta = seq(0, 5, by = 0.01),
+  prior = dgamma(seq(0, 5, by = 0.01), a, b),
+  pos.theta1 = dgamma(seq(0, 5, by = 0.01), a + sy1, b + n1),
+  pos.theta2 = dgamma(seq(0, 5, by = 0.01), a + sy2, b + n2)
+)
+df.long = melt(df, id.vars = 'theta', variable_name = 'dist')
+ggplot(df.long, aes(x = theta, y = value, group = dist, color = dist)) +
+  geom_line()
+```
+
+Notice that we can calculate the probability that $\theta_1 > \theta_2$ SOMEHOW
+(calculate area outside of the curve?) And also define a posterior predictive
+distribution by obtaining the probabilities of samples from the posterior.
+
+# Exponential families and conjugate priors
+
+Binomial and Poisson models are *exponential family models*.
+
+> **Exponential family model**: a model whose densities can be expressed as
+$$p(y \mid \phi) = h(y)c(\phi)e^{\phi t(y)}$$ where $\phi$ is the unknown
+parameter and $t(y)$ is the sufficient statistic.
+
+For example recall the Binomial model PDF is
+
+$$p(y \mid \theta) = {n \choose y} \theta^{y} (1 - \theta)^{n - y}$$
+
+where $y = \sum y_i$ is the sufficient statistic.

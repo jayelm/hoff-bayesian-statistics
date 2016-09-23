@@ -2,7 +2,11 @@
 title: 'Chapter 1: Introduction and examples'
 author: "Jesse Mu"
 date: "September 7, 2016"
-output: html_document
+output:
+  html_document:
+    toc: true
+    toc_float: true
+    highlight: pygments
 ---
 
 <!-- Setup -->
@@ -19,6 +23,7 @@ MathJax.Hub.Config({
 
 ```{r echo=FALSE, message=FALSE}
 knitr::opts_chunk$set(fig.align = 'center', message = FALSE)
+library(knitr)
 library(ggplot2)
 library(cowplot)
 library(reshape)
@@ -36,8 +41,8 @@ beliefs in light of new information. Data analysis tools built on these foundati
 We want to estimate a parameter $\theta \in \Theta$ from a dataset $y \in
 \mathcal{Y}$.
 
-- $p(\theta)$, defined for all $\theta \in \Theta$, is our prior distribution about the space of possible parameters
-- Bayesian methods require a **sampling model**: $p(y \mid 
+- $P(\theta)$, defined for all $\theta \in \Theta$, is our prior distribution about the space of possible parameters
+- Bayesian methods require a **sampling model**: $P(y \mid 
 \theta)$ describes the probability that of a specific dataset given a parameter.
   - Note that later, this will be useful for prediction!
   
@@ -45,13 +50,13 @@ Then we wish to update our belief distribution about $\theta$ given. The
 *posterior distribution* is defined as
 
 \begin{align}
-p(\theta \mid y) = \frac{p(y \mid \theta) p(\theta)}{\int_{\Theta}p(y \mid \tilde{\theta}) p(\tilde{\theta}) \; d\tilde{\theta}}.
+P(\theta \mid y) = \frac{P(y \mid \theta) P(\theta)}{\int_{\Theta}P(y \mid \tilde{\theta}) P(\tilde{\theta}) \; d\tilde{\theta}}.
 \end{align}
 
-Note that the denominator is constant and doesn't need to be computed, since we can just normalize our posterior distribution such that $p(\theta \mid y)$ for all $\Theta$ sums up to 1. Thus we commonly write
+Note that the denominator is constant and doesn't need to be computed, since we can just normalize our posterior distribution such that $P(\theta \mid y)$ for all $\Theta$ sums up to 1. Thus we commonly write
 
 \begin{align}
-p(\theta \mid y) \propto p(y \mid \theta) p(\theta).
+P(\theta \mid y) \propto P(y \mid \theta) P(\theta).
 \end{align}
 
 ### versus frequentist learning
@@ -64,7 +69,7 @@ Likelihood Estimation (MLE), we select the parameter that is most likely to have
 generated the observed data:
 
 $$
-\theta_{ML} = \underset{\theta}{\text{argmax}} \; p(y \mid \theta).
+\theta_{ML} = \underset{\theta}{\text{argmax}} \; P(y \mid \theta).
 $$
 
 Using Bayesian Maximum A Posteriori Estimation, however, we select $\theta$ that
@@ -72,8 +77,8 @@ is most likely given the observed data. The difference is that our measure of
 "likelihood given the data" is influenced by our prior beliefs about $\theta$, as in Equation 2:
 
 \begin{align}
-\theta_{MAP} &= \underset{\theta}{\text{argmax}} \; p(\theta \mid y) \\
-  &= \underset{\theta}{\text{argmax}} p(y \mid \theta) p(\theta).
+\theta_{MAP} &= \underset{\theta}{\text{argmax}} \; P(\theta \mid y) \\
+  &= \underset{\theta}{\text{argmax}} P(y \mid \theta) P(\theta).
 \end{align}
 
 Note that with an uninformative prior $\theta \sim \text{Uniform}$, the MAP
@@ -92,7 +97,7 @@ Outside of formal mathematical grounding, Bayesian methods have excellent
 practical benefits as data analysis tools:
 
 1. Even if prior probabilities are not exactly quantifiable, approximations of
-$p(\theta)$ and $p(\theta \mid y)$ are still useful for analyzing how rational
+$P(\theta)$ and $P(\theta \mid y)$ are still useful for analyzing how rational
 learners would change beliefs
 2. Bayesian methods can represent principled ways of doing analysis when there
 are no alternative methods
@@ -165,8 +170,8 @@ ggplot(d, aes(x = theta, y = density, color = distribution)) +
 Notice that Bayesian and frequentist approaches to parameter estimation differ:
 
 \begin{align}
-\theta_{ML} &= \underset{\theta}{\text{argmax}} \; p(Y = 0 \mid \theta) = 0 \\
-\theta_{MAP} &= \underset{\theta}{\text{argmax}} \; p(\theta \mid Y = 0) = \text{Mode}(\theta \mid Y = 0) = 0.025
+\theta_{ML} &= \underset{\theta}{\text{argmax}} \; P(Y = 0 \mid \theta) = 0 \\
+\theta_{MAP} &= \underset{\theta}{\text{argmax}} \; P(\theta \mid Y = 0) = \text{Mode}(\theta \mid Y = 0) = 0.025
 \end{align}
 
 but also notice that the point estimate is NOT equal to the expectation of 
@@ -232,11 +237,11 @@ $\theta_{ML} = 0$. Since our estimate is subject to sampling error, we commonly
 construct confidence intervals for these estimates.
 
 The **Wald interval** is a commonly used confidene interval for a population 
-proportion, but falls short here. Although the Wald interval is asymptotically
-correct in its level of confidence, for small sample sizes, this property does
-not hold. For an observation $Y = 20$, for example, the Wald CI is, regardless
-of level of confidence, just $0$. We wouldn't want to say with 99.999%
-confidence that the population mean is 0, given our small sample size.
+proportion. However, it falls short here. Although the Wald interval is
+asymptotically correct in its level of confidence, for small sample sizes, this
+property does not hold. For an observation $Y = 20$, for example, the Wald CI
+is, regardless of level of confidence, just $0$. We wouldn't want to say with
+99.999% confidence that the population mean is 0, given our small sample size.
 
 The previous Bayesian estimate, however, works well for both small and large n. 
 With small $n$, the estimator allows us to encode prior beliefs about the true 
@@ -261,7 +266,7 @@ in Section 5.4.
 
 # Example 2: Building a predictive model
 
-A brief synonpsis of an example in Chapter 9, where we want to build a 
+A brief synopsis of an example in Chapter 9, where we want to build a 
 predictive model of diabeates progression from 64 variables such as age, sex and
 BMI.
 
