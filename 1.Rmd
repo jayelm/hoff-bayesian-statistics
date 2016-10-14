@@ -225,9 +225,12 @@ colnames(d) = W
 df = melt(d)
 colnames(df) = c('theta0', 'w', 'theta')
 
-ggplot(df, aes(x = w, y = theta0, fill = theta)) +
-  geom_tile() +
+p = ggplot(df, aes(x = w, y = theta0, z = theta)) +
+  geom_tile(aes(fill = theta)) +
+  stat_contour(aes(colour = ..level..)) +
   scale_fill_distiller(palette = 'YlOrRd')
+library(directlabels)
+direct.label(p, method = 'bottom.pieces')
 ```
 
 ## Comparison to non-Bayesian methods
@@ -235,6 +238,8 @@ ggplot(df, aes(x = w, y = theta0, fill = theta)) +
 When we use the frequentist maximum likelihood estimator, we get an estimated 
 $\theta_{ML} = 0$. Since our estimate is subject to sampling error, we commonly 
 construct confidence intervals for these estimates.
+
+TODO: REFINE! WALD NOT
 
 The **Wald interval** is a commonly used confidene interval for a population 
 proportion. However, it falls short here. Although the Wald interval is
@@ -251,7 +256,9 @@ $$
 \hat{\theta} = \mathbb{E}(\theta \mid Y = y) = \frac{n}{n + w}\frac{y}{n} + \frac{w}{n + w}\theta_0.
 $$
 
-Notice that as $n$ grows large, this estimator approaches the sample mean $\frac{y}{n}$:
+Notice that for large $n$ large, this estimator approaches the sample mean $\frac{y}{n}$:
+
+TODO::: REFINE!!!
 
 $$
 \lim_{n \to \infty} \frac{n}{n + w} \frac{y}{n} + \frac{w}{n + w}\theta_0 =
