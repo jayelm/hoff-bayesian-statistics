@@ -1,12 +1,12 @@
 ---
-title: "Chapter 3: One-parameter models"
+title: 'Chapter 3: One-parameter models'
 author: "Jesse Mu"
 date: "September 17, 2016"
 output:
   html_document:
-    toc: true
-    toc_float: true
     highlight: pygments
+    toc: yes
+    toc_float: yes
 ---
 
 <!-- Setup -->
@@ -41,7 +41,7 @@ Under our model, conditioned on some $\theta$, $Y_i$ are i.i.d. binary random
 variables with probability $\theta$. So the joint probability is
 
 \begin{align}
-P(y_1, \dots, y_{129} \mid \theta) = \theta^{\sum_{i} y_i} (1 - \theta)^{129 -
+p(y_1, \dots, y_{129} \mid \theta) = \theta^{\sum_{i} y_i} (1 - \theta)^{129 -
 \sum_i y_i}
 \end{align}
 
@@ -57,8 +57,8 @@ given width is constant, regardless of where the interval is.
 Then, notice
 
 \begin{align}
-P(\theta \mid y_1, \dots, y_{129}) &= \frac{P(y_1, \dots, y_{129} \mid \theta) P(\theta)}{P(y_1, \dots, y_{129})} \\
-&= \frac{P(y_1, \dots, y_{129} \mid \theta)}{P(y_1, \dots, y_{129})} & (\text{since $P(\theta)$ is constant for all $\theta$}) \\
+p(\theta \mid y_1, \dots, y_{129}) &= \frac{p(y_1, \dots, y_{129} \mid \theta) p(\theta)}{p(y_1, \dots, y_{129})} \\
+&= \frac{p(y_1, \dots, y_{129} \mid \theta)}{p(y_1, \dots, y_{129})} & (\text{since $p(\theta)$ is constant for all $\theta$}) \\
 &\propto p(y_1, \dots, y_{129} \mid \theta)
 \end{align}
 
@@ -103,9 +103,17 @@ p(\theta \mid y) &= \frac{\Gamma(131)}{\Gamma(119) \Gamma(12)} \theta^{118} (1 -
 &= \frac{\Gamma(131)}{\Gamma(119) \Gamma(12)} \theta^{119 - 1} (1 - \theta)^{12 - 1} & (\text{Beta parameterization})\\
 \end{align}
 
-which happens to be a *beta distribution* with parameters $\alpha = 119$ and
-$\beta = 12$. For PDF, mode, expectation, etc. see
-[Wikipedia](https://en.wikipedia.org/wiki/Beta_distribution). In our case, our posterior looks like:
+which happens to be a *beta distribution* with parameters $a = 119$ and
+$b = 12$.
+
+If $Y \sim \text{Beta}(a, b)$, then
+
+- PDF: $p(y) = \frac{\Gamma(a + b)}{\Gamma(a)\Gamma(b)} y^{a - 1} (1 - y)^{b - 1}$
+- $\mathbb{E}(Y) = \frac{a}{a + b}$
+- $\text{Mode}(Y) = \frac{a - 1}{a + b - 2}$
+- $\text{Var}(Y) = \frac{ab}{(a + b)^2 (a + b + 1)}$
+
+In our case, our posterior looks like:
 
 ```{r echo=FALSE}
 library(ggrepel)
@@ -233,7 +241,15 @@ p(\tilde{Y} = 1 \mid y) &= \int p(\tilde{Y} = 1, \theta \mid y) \; d\theta & \te
 &= \mathbb{E}(\theta \mid y).
 \end{align}
 
-Note that using the expectation instead of the mode is nice, for examples where
+Note that in this case the posterior predictive distribution is very easy to
+predict and is (as it can only possibly be) a Bernoulli distribution with a
+certain probability $p$. When posterior distributions become more complicated,
+however, (e.g. Poisson model), their posterior predictive distributions may
+require more complex calculations and may result in a different family of
+distributions. Still later, we will show how to simulate posterior predictive
+distributions with Monte Carlo sampling.
+
+Also note that using the expectation instead of the mode is nice, for examples where
 we have a uniform $\text{Beta}(1, 1)$ prior and we observe $Y = 0$. Then,
 
 \begin{align}
@@ -297,7 +313,7 @@ higher probailities than values of theta *inside* the interval, another option
 is to force "symmetry" of heights by searching for the **highest posterior 
 density** region, which can be intuitively found by drawing a horizontal line 
 down the density until the region contained by the line is $1 - \alpha$% of the 
-entire curve.
+entire curve. It's not entirely clear to me how to calculate these analytically; computationally, using a discretized density, you can use a "trial and error" approach or a neat procedure detailed in Exercise 4.7 (c).
 
 # The Poisson model
 
@@ -352,8 +368,6 @@ family of distributions is the Gamma family. If $\theta \sim \text{Gamma}(a, b)$
 - $p(\theta) = \frac{b^a}{\Gamma(a)}\theta^{a - 1} e^{-b \theta}$
 - $\mathbb{E}(\theta) = a/b$
 - $\text{Var}(\theta) = a/b^2$
-
-There are also several alternative parameterizations ([Wikipedia](https://en.wikipedia.org/wiki/Gamma_distribution#Applications)).
 
 To prove conjugacy, we have
 
@@ -561,7 +575,7 @@ where
 - $\phi = \log \theta$
 - $h(y) = \frac{1}{y!}$
 - $t(y) = y$
-- $c(\phi) = \text{exp}(-e^\phi}$ (The book has a typo here).
+- $c(\phi) = \text{exp}(-e^\phi)$ (The book has a typo here).
 
 ### Prior
 

@@ -4,9 +4,9 @@ author: "Jesse Mu"
 date: "September 28, 2016"
 output:
   html_document:
-    toc: true
-    toc_float: true
     highlight: pygments
+    toc: yes
+    toc_float: yes
 ---
 
 <!-- Setup -->
@@ -83,10 +83,24 @@ Since for this example, the supports of $\theta_1$ and $\theta_2$ are $[0,
 \begin{align}
 P(\theta_1 > \theta_2 \mid y) &= \int_0^\infty \left( \int_0^{\theta_1}
 p(\theta_1 \mid y) p(\theta_2 \mid y) \; d\theta_2 \right) \; d\theta_1 \\
+&= \int_0^\infty \left( \int_0^{\theta_1}
+\text{dgamma}(\theta_1, 219, 112) \times \text{dgamma}(\theta_2, 68, 45) \; d\theta_2 \right) \; d\theta_1 \\
 \end{align}
 
-Since Gamma distributions have a well-defined PDF this integral is computable,
-but alternatively, we can estimate via Monte Carlo estimation.
+Since Gamma distributions have well-defined PDFs, in this case the integral is
+computable and is reasonably easy in R:
+
+```{r}
+inner.int = function(Theta.1) {
+  sapply(Theta.1, function(theta.1) {
+    integrate(function(theta.2) dgamma(theta.1, 219, 112) * dgamma(theta.2, 68, 45), 0, theta.1)$value
+  })
+}
+integrate(inner.int, 0, 50)
+```
+
+However, when inference gets complicated, integrals may not be tractable.
+Alternatively, we can estimate via *Monte Carlo estimation*.
 
 Notice that we can implement computational tools that allow us to sample
 arbitrarily from the Gamma distributions of $\theta_1$ and $\theta_2$. The 
@@ -356,16 +370,14 @@ posterior distribution of $\theta, \tilde{Y}$, and the sequence $\{\tilde{y}^1,
 \dots, \tilde{y}^S\}$ are samples from the *marginal* posterior distribution of
 $\tilde{Y}$ (if we had an infinite number of samples, we would be "summing" over all theta).
 
-Note: there are probably some theoretical results about variance of the samples
-from this kind of sampling that means that we would need to sample more $y_i$s
-than $\theta_i$s since we're doing "double" sampling. (Probably use the same
-techniques of estimating standard error)
+# Posterior predictive model checking
+
+Because exercises 4.3 and 4.8 address this, I'm skipping this section for now.
 
 # Exercises
 
 ## 4.1
 
-a + y, b + n - y
 For the county in exercise 3.1, $\theta_3 \mid \sum Y_i = y \sim \text{Beta}(58,
 44)$.
 
@@ -449,7 +461,6 @@ ts = sapply(theta1, function(theta) {
 ggplot(data.frame(ts = ts), aes(x = ts)) +
   geom_histogram() +
   geom_vline(xintercept = mean(ya) / sd(ya))
-# Observed
 ```
 
 Since the observed statistic (vertical line) is centered well within the
@@ -476,12 +487,6 @@ ggplot(data.frame(ts = ts), aes(x = ts)) +
 
 Since the observed statistic (vertical line) seems to be an outlier for the range of statistics normally seen in this dataset, we can infer that the Poisson model does not seem to fit this dataset well.
 
-## 4.4
-
-
-## 4.5
-
-
 ## 4.6
 
 ### via Monte-Carlo sampling
@@ -499,8 +504,7 @@ you cannot have a uniform distribution on an infinite interval.
 
 ### analytically
 
-See https://www2.stat.duke.edu/courses/Fall11/sta114/jeffreys.pdf for some
-insight on this.
+This is computed in Exercise 3.10 (a).
 
 ## 4.7
 
