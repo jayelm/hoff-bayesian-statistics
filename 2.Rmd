@@ -95,10 +95,10 @@ distribution functions (CDFs) to define probability distributions
 F(y) = P(Y \leq y)
 \end{align}
 
-and the probability distribution function is
+and the probability distribution is the $p(y)$ that satisfies
 
 \begin{align}
-f(y) = \int_{\infty}^x P(y) \; dy
+f(x) = \int_{-\infty}^x p(y) \; dy
 \end{align}
 
 Examples include the normal and beta distributions.
@@ -117,28 +117,28 @@ Let $Y_1$ and $Y_2$ be random variables with sample spaces $\mathcal{Y}_1$ and
 $\mathcal{Y}_2$. Then the joint pdf/density of $Y_1$ and $Y_2$ is defined as:
 
 $$
-P(y_1, y_2) = P(\{Y_1 = y_1\} \cap \{Y_2 = y_2 \})
+p(y_1, y_2) = P(\{Y_1 = y_1\} \cap \{Y_2 = y_2 \})
 $$
 
 and the *marginal density* of $Y_1$ is obtained by summing over all possible
 values of $Y_2$:
 
 \begin{align}
-P(y_1) &= \sum_{y_2 \in \mathcal{Y}_2} P(y_1, y_2) \\
-       &= \sum_{y_2 \in \mathcal{Y}_2} P(y_1 \mid y_2) P(y_2).
+p(y_1) &= \sum_{y_2 \in \mathcal{Y}_2} p(y_1, y_2) \\
+       &= \sum_{y_2 \in \mathcal{Y}_2} p(y_1 \mid y_2) p(y_2).
 \end{align}
 
 The *conditional density* is
 
 \begin{align}
-P(y_2 \mid y_1) = \frac{P(y_1, y_2)}{P(y_1)}
+p(y_2 \mid y_1) = \frac{p(y_1, y_2)}{p(y_1)}
 \end{align}
 
-Notice that given the joint density $P(y_1, y_2)$, we can calculate marginal and
-conditional densities $\{ P(y_1), P(y_2), P(y_1 \mid y_2), P(y_2 \mid y_1) \}$ 
-by simply summing up the relevant variables. Additionally, given $P(y_1)$ and 
-$P(y_2 \mid y_1)$, (or the reverse), we can reconstruct the joint distribution.
-However, given only marginal densities $P(y_1)$ and $P(y_2)$, we can't
+Notice that given the joint density $p(y_1, y_2)$, we can calculate marginal and
+conditional densities $\{ p(y_1), p(y_2), p(y_1 \mid y_2), p(y_2 \mid y_1) \}$ 
+by simply summing up the relevant variables. Additionally, given $p(y_1)$ and 
+$p(y_2 \mid y_1)$, (or the reverse), we can reconstruct the joint distribution.
+However, given only marginal densities $p(y_1)$ and $p(y_2)$, we can't
 reconstruct the joint distribution, since we don't know whether the events are
 independent.
 
@@ -146,40 +146,41 @@ In the continuous case, the probability density function is a function of $y_1$
 and $y_2$ such that the CDF is
 
 $$
-F(y_1, y_2) = \int_{-\infty}^{x} \int_{-\infty}^{y} P(y_1, y_2) \; dy_2 dy_1.
+F(y_1, y_2) = \int_{-\infty}^{x} \int_{-\infty}^{y} p(y_1, y_2) \; dy_2 \; dy_1.
 $$
 
 Obtaining the marginal densities can be done by integrating out the irrelevant variable:
 
 \begin{align}
-P(y_1) &= \int_{-\infty}^{\infty} P(y_1, y_2) \; dy_2 \\
-P(y_2) &= \int_{-\infty}^{\infty} P(y_1, y_2) \; dy_1 \\
+p(y_1) &= \int_{-\infty}^{\infty} p(y_1, y_2) \; dy_2 \\
+p(y_2) &= \int_{-\infty}^{\infty} p(y_1, y_2) \; dy_1 \\
 \end{align}
 
-With the marginal densities, you can compute the conditional densities $P(y_2
-\mid y_1) = P(y_1, y_2) / P(y_1)$, etc.
+With the marginal densities, you can compute the conditional densities $p(y_2
+\mid y_1) = p(y_1, y_2) / p(y_1)$, etc.
 
 ## Independent random variables
 
-Let $Y_1, \dots, Y_n$ be random variables dependent on a common parameter $\theta$. Then $Y_1 \dots, Y_n$ are conditionally independent given $\theta$ if
+Let $Y_1, \dots, Y_n$ be random variables dependent on a common parameter
+$\theta$. Then $Y_1 \dots, Y_n$ are conditionally independent given $\theta$ if
 
 \begin{align}
-P(y_1, \dots, y_n \mid \theta) = P(y_1 \mid \theta) \times \dots \times P(y_n \mid \theta).
+p(y_1, \dots, y_n \mid \theta) = p(y_1 \mid \theta) \times \dots \times p(y_n \mid \theta).
 \end{align}
 
 Note this extends naturally from the definition of independent of two random
-variables, $P(A \cap B) = P(A) P(B)$. Thus, knowing about any $Y_i$ does not
-give any information about the other $Y_j$. Lastly, the joint density of these
+variables, $P(A \cap B) = P(A) P(B)$. Thus, knowing about any $Y_i$ does not 
+give any information about the other $Y_j$. Lastly, the joint density of these 
 variables can be defined as
 
 $$
-P(y_1, \dots, y_n \mid \theta) = \prod_i P(y_i \mid \theta).
+p(y_1, \dots, y_n \mid \theta) = \prod_i p(y_i \mid \theta).
 $$
 
-We say that $Y_1, \dots, Y_n$ are conditional independent and identically distributed (i.i.d.):
+We say that $Y_1, \dots, Y_n$ are conditionallly independent and identically distributed (i.i.d.):
 
 $$
-Y_1, \dots, Y_n \mid \theta \sim \text{i.i.d.} \; P(y \mid \theta).
+Y_1, \dots, Y_n \mid \theta \sim \text{i.i.d.} \; p(y \mid \theta).
 $$
 
 # Exchangeability
@@ -189,40 +190,40 @@ specific order of observation of these random variables aren't important. For
 example, consider a random sample of 3 participants from an infinite
 population which may or may not have a property (1 or 0) It makes sense that
 
-$$P(0, 0, 1) = P(1, 0, 0) = P(0, 1, 0).$$
+$$p(0, 0, 1) = p(1, 0, 0) = p(0, 1, 0).$$
 
 since the likelihood of a person having the property or not is $\theta$,
 regardless of the sample. This property is called exchangeability.
 
-> Exchangability. Let $Y_1, \dots, Y_n$ be random variables. If $P(y_1, \dots,
-> y_n) = P(y_{\pi_1}, \dots, y_{\pi_n})$ for all permutations $\pi$ of $\{1, \dots, n\}$, then $Y_1, \dots, Y_n$ are exchangable.
+> Exchangability. Let $Y_1, \dots, Y_n$ be random variables. If $p(y_1, \dots,
+> y_n) = p(y_{\pi_1}, \dots, y_{\pi_n})$ for all permutations $\pi$ of $\{1, \dots, n\}$, then $Y_1, \dots, Y_n$ are exchangable.
 
 If $Y_1, \dots Y_n$ are i.i.d., then they are exchangeable:
 
 \begin{align}
-P(y_1, \dots, y_n) &= \int P(y_1, \dots, y_n \mid \theta)\; d\theta & \\
-&= \int \left( \prod_i P(y_i \mid \theta) \right) P(\theta) \; d\theta & \text{(i.i.d.)} \\
-&= \int \left( \prod_i P(y_{\pi_i} \mid \theta) \right) P(\theta) \; d\theta & \text{(order of product doesn't matter)} \\
-&= P(y_{\pi_1}, \dots, y_{\pi_n}).
+p(y_1, \dots, y_n) &= \int p(y_1, \dots, y_n \mid \theta)\; d\theta & \\
+&= \int \left( \prod_i p(y_i \mid \theta) \right) p(\theta) \; d\theta & \text{(i.i.d.)} \\
+&= \int \left( \prod_i p(y_{\pi_i} \mid \theta) \right) p(\theta) \; d\theta & \text{(order of product doesn't matter)} \\
+&= p(y_{\pi_1}, \dots, y_{\pi_n}).
 \end{align}
 
-Classical assumption of Bernoulli variables $X_1, X_2, \dots, X_n$ as outcomes
-of the same experiment (e.g. a coin flip): *independence*. But continuing to
-observe $X_j$s should result in a change of opinion about the distribution of
-coin flip outcomes (e.g. gradually learning coin bias). So Bayesian
-statisticians should assume *exchangeability*, a weaker condition than
+Classical assumption of Bernoulli variables $X_1, X_2, \dots, X_n$ as outcomes 
+of the same experiment (e.g. a coin flip): *independence*. But continuing to 
+observe $X_j$s should result in a change of opinion about the distribution of 
+coin flip outcomes (e.g. gradually learning coin bias). So Bayesian 
+statisticians should assume *exchangeability*, a weaker condition than 
 *independence*.
 
 # de Finetti's theorem
 
-> de Finetti's theorem. Let $Y_1, \dots, Y_n$ be exchangable but **not necessarily i.i.d.** random variables: $$P(y_1, \dots, y_n) = P(y_{\pi_1}, \dots, y_{\pi_n})$$ for all partitions $\pi$. Then our model can be written as
-> $$P(y_1, \dots, y_n) = \int \left( \prod_1^n P(y_i \mid \theta) \right) P(\theta) \; d\theta.$$
+> de Finetti's theorem. Let $Y_1, \dots, Y_n$ be a finite subset of an infinitely exchangeable but **not necessarily i.i.d.** random variables: $$p(y_1, \dots, y_n) = p(y_{\pi_1}, \dots, y_{\pi_n})$$ for all partitions $\pi$. Then our model can be written as
+> $$p(y_1, \dots, y_n) = \int \left( \prod_1^n p(y_i \mid \theta) \right) p(\theta) \; d\theta.$$
 
 So, in general,
 $$Y_1, \dots, Y_n \mid \theta \text{ are i.i.d.} \Leftrightarrow Y_1, \dots, Y_n \text{ are exchangable for all $n$}$$
 
-Importantly, if we sample from a sufficiently large population, then we can model
-the sample variables as being approximately conditionally i.i.d.
+Importantly, if we sample from a sufficiently large population, then we can
+model the sample variables as being approximately conditionally i.i.d.
 
 ## Proof for {0, 1} random variables
 
@@ -231,7 +232,7 @@ From Heath & Sudderth (1976). De Finetti's Theorem on Exchangeable Variables. Al
 ### Alternative statement of theorem
 
 For every infinite sequence of exchangeable random variables $(X_n)$ having
-values in $\{0, 1\}$, there is a probability distribution $F$ such that
+values in $\{0, 1\}$ and a finite subsequence $X_1, \dots, X_n$, there is a probability distribution $F$ such that
 
 \begin{align}
 P(X_1 = 1, \dots, X_k = 1, X_{k+1} = 0, \dots, X_n = 0) &=  \\
@@ -250,18 +251,7 @@ Let $q_r = P\left( \sum_{j
 = 1}^m X_j = r \right)$, that is, $q_i$ is the probability that exactly $i$ of
 the $m$ variables are 1.
 
-Also denote $(x)_k = \prod_{j = 0}^{k - 1} (x - j)$, that is, the first $k$
-numbers of the computation of the factorial starting at $x, x-1, \dots, 1$: e.g.
-$(7)_2 = 7 * 6 = 42$.
-
-```python
-def xk(x, k, j=0):
-    print(x - j)
-    if j == k - 1:
-        return x - j
-    return (x - j) * xk(x, k, j + 1)
-```
-
+Also denote $(x)_k = \prod_{j = 0}^{k - 1} (x - j) = \frac{x!}{(x - k)!}$.
 
 Then,
 
@@ -269,17 +259,23 @@ Then,
 p_{k, n} = \sum_{r = 0}^{m} \frac{(r)_k (m - r)_{n - k}}{(m)_n} q_r \text{ for } 0 \leq k \leq n \leq m
 \end{align}
 
-where $\frac{(r)_k (m - r)_{n - k}}{(m)_n}$ is some complicated combinatorics
-term for the number of ways to that $r$ ones and $m - r$ zeros can be placed in
-a sequence of length $m$. We can (somehow) re-package the summation of discrete
-$r$ as an integral over a stepwise function $F_m$ that jumps at every $r$ from $0$ to $m$.
+where $\frac{(r)_k (m - r)_{n - k}}{(m)_n}$ is some complicated combinatorics 
+term for the number of ways to that $r$ ones and $m - r$ zeros can be placed in 
+a sequence of length $m$.
 
+With the sustitution $\frac{r}{m} = \theta$, we can re-package the summation of
+discrete $r$ as an integral over a stepwise function $F_m$ with domain $[0, 1]$
+that jumps $q_r$ at every interval $0 \leq r / m$ \leq 1$:
 
-If you imagine what happens to the integrand as $m$ goes to infinity:
+$$
+p_{k, n} = \int_{0}^{1} \frac{(\theta m)_k ((1 - \theta)m)_{n - k}}{(m)_n} F_m(d\theta).
+$$
 
-\begin{align}
-\lim_{m \to \infty} \frac{5}{2}
-\end{align}
+As $m$ goes to infinity, the steps of the stepwise function grow infinitely 
+small, such that the function converges to the continuous probability 
+distribution $F$. By Helly's theorem and some hand-waving in this explanation,
+the components of the integrand converge to the exponential terms in the
+theorem: $\theta^k (1 - \theta)^{n - k}$.
 
 # Exercises
 
@@ -289,7 +285,7 @@ If you imagine what happens to the integrand as $m$ goes to infinity:
 
 The marginal probability distribution of a father's occupation is found by
 summing over the rows of the son's occupation. Formally, let $F$ be the father's
-occupation and $S$ be the son's. Then $p(F = f) = \sum p(F = f, S = s)$.
+occupation and $S$ be the son's. Then $P(F = f) = \sum P(F = f, S = s)$.
 
 - Farm: `r 0.018 + 0.035 + 0.031 + 0.008 + 0.018`
 - Operatives: `r 0.002 + 0.112 + 0.064 + 0.032 + 0.069`
@@ -306,8 +302,8 @@ values of the son's occupation such that they sum to one. This can be done by di
 calculating
 
 \begin{align}
-p(S = s \mid F = \text{farm}) &= \frac{p(S = s, F = \text{farm})}{p(F = \text{farm})} \\
-&= \frac{p(S = s, F = \text{farm})}{\sum_{s' \in S} p(S = s', F = \text{farm})}.
+P(S = s \mid F = \text{farm}) &= \frac{P(S = s, F = \text{farm})}{P(F = \text{farm})} \\
+&= \frac{P(S = s, F = \text{farm})}{\sum_{s' \in S} P(S = s', F = \text{farm})}.
 \end{align}
 
 ### d
@@ -393,21 +389,20 @@ z) = \int p(x \mid y, z) = 1$, $p(x \mid z) = p(x \mid y, z)$, so $x$ and $y$ ar
 Use **P3** and condition on an always true event:
 
 \begin{align}
-p(H_j \cap E \mid 1 = 1) &= p(H_j \mid 1 = 1) p(E \mid H_j \cap 1 = 1) = p(H_j)p(E \mid H_j) \\
-p(H_j \cap E \mid 1 = 1) &= p(E \mid 1 = 1) p(H_j \mid E \cap 1 = 1) = p(E)p(H_j \mid E) \\
-&= p(H_j) p(E \mid H_j)
+P(H_j \cap E \mid 1 = 1) &= P(H_j \mid 1 = 1) P(E \mid H_j \cap 1 = 1) = P(H_j)P(E \mid H_j) \\
+P(H_j \cap E \mid 1 = 1) &= P(E \mid 1 = 1) P(H_j \mid E \cap 1 = 1) = p(E)p(H_j \mid E) \\
+&= P(H_j) P(E \mid H_j)
 \end{align}
 
 ### b
 
-
 If we can assume that $p(\mathcal{H}) = 1$, then
 
 \begin{align}
-p(E) &= p(E \cap H) \\
-&= p(E \cap (H_1 \cup H_2 \cup \dots \cup H_k)) \\
-&= p((E \cap (H_1)) \cup (E \cap (H_2 \cup \dots \cup H_k))) & \text{Distributing} \\
-&= p(E \cap H_1) + p(E \cap (H_2 \cup \dots \cup H_k)) & \text{P2; Implied condition on a true event}
+P(E) &= P(E \cap H) \\
+&= P(E \cap (H_1 \cup H_2 \cup \dots \cup H_k)) \\
+&= P((E \cap (H_1)) \cup (E \cap (H_2 \cup \dots \cup H_k))) & \text{Distributing} \\
+&= P(E \cap H_1) + P(E \cap (H_2 \cup \dots \cup H_k)) & \text{P2; Implied condition on a true event}
 \end{align}
 
 ### c
@@ -417,10 +412,10 @@ Proceed inductively from b.
 ### d
 
 \begin{align}
-& p(H_j)p(E \mid H_j) = p(E)p(H_j \mid E) \\
-\implies& p(H_j \mid E) = \frac{p(H_j)p(E \mid H_j)}{p(E)} \\
-\implies& p(H_j \mid E) = \frac{p(H_j)p(E \mid H_j)}{\sum_k p(E \cap H_k)} & \text{From c} \\
-\implies& p(H_j \mid E) = \frac{p(H_j)p(E \mid H_j)}{\sum_k p(E \mid H_k) p(H_k)} & \text{P3} \\
+& P(H_j)P(E \mid H_j) = P(E)P(H_j \mid E) \\
+\implies& P(H_j \mid E) = \frac{P(H_j)P(E \mid H_j)}{P(E)} \\
+\implies& P(H_j \mid E) = \frac{P(H_j)P(E \mid H_j)}{\sum_k P(E \cap H_k)} & \text{From c} \\
+\implies& P(H_j \mid E) = \frac{P(H_j)P(E \mid H_j)}{\sum_k P(E \mid H_k) P(H_k)} & \text{P3} \\
 \end{align}
 
 ## 2.5
@@ -464,7 +459,7 @@ from clarifies our probabilites of obtaining a green or red ball.
 ### d
 
 \begin{align}
-p(X = 0 \mid Y = 1) &= .6
+P(X = 0 \mid Y = 1) &= .6
 \end{align}
 
 ## 2.6
@@ -472,22 +467,22 @@ p(X = 0 \mid Y = 1) &= .6
 If $A \perp B \mid C$ then
 
 \begin{align}
-p(A, B \mid C) &= p(A \mid C) p(B \mid C) \\
-  &= (1 - p(A^c \mid C))p(B \mid C) \\
-  &= p(B \mid C) - p(B \mid C)p(A^c \mid C)
+P(A, B \mid C) &= P(A \mid C) P(B \mid C) \\
+  &= (1 - P(A^c \mid C))P(B \mid C) \\
+  &= P(B \mid C) - P(B \mid C)P(A^c \mid C)
 \end{align}
 
-so $$p(B \mid C)p(A^c \mid C) = p(B \mid C) - p(A, B \mid C)$$.
+so $$P(B \mid C)P(A^c \mid C) = P(B \mid C) - P(A, B \mid C)$$.
 
 Also notice
 \begin{align}
-& p(B \mid C) = p(A, B \mid C) + p(A^c, B \mid C) & \text{LTP} \\
-\implies & p(A^c, B \mid C) = p(B \mid C) - p(A, B \mid C)
+& P(B \mid C) = P(A, B \mid C) + P(A^c, B \mid C) & \text{LTP} \\
+\implies & P(A^c, B \mid C) = P(B \mid C) - P(A, B \mid C)
 \end{align}
 
 Equating the two equations above, we have
 $$
-p(A^c, B \mid C) = p(B \mid C) p(A^c \mid C)
+P(A^c, B \mid C) = P(B \mid C) P(A^c \mid C)
 $$
 
 We do this similarly for the other events.
