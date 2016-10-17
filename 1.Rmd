@@ -41,7 +41,7 @@ beliefs in light of new information. Data analysis tools built on these foundati
 We want to estimate a parameter $\theta \in \Theta$ from a dataset $y \in
 \mathcal{Y}$.
 
-- $P(\theta)$, defined for all $\theta \in \Theta$, is our prior distribution about the space of possible parameters
+- $p(\theta)$, defined for all $\theta \in \Theta$, is our prior distribution about the space of possible parameters
 - Bayesian methods require a **sampling model**: $P(y \mid 
 \theta)$ describes the probability that of a specific dataset given a parameter.
   - Note that later, this will be useful for prediction!
@@ -50,13 +50,13 @@ Then we wish to update our belief distribution about $\theta$ given. The
 *posterior distribution* is defined as
 
 \begin{align}
-P(\theta \mid y) = \frac{P(y \mid \theta) P(\theta)}{\int_{\Theta}P(y \mid \tilde{\theta}) P(\tilde{\theta}) \; d\tilde{\theta}}.
+p(\theta \mid y) = \frac{p(y \mid \theta) p(\theta)}{\int_{\Theta}p(y \mid \tilde{\theta}) p(\tilde{\theta}) \; d\tilde{\theta}}.
 \end{align}
 
 Note that the denominator is constant and doesn't need to be computed, since we can just normalize our posterior distribution such that $P(\theta \mid y)$ for all $\Theta$ sums up to 1. Thus we commonly write
 
 \begin{align}
-P(\theta \mid y) \propto P(y \mid \theta) P(\theta).
+p(\theta \mid y) \propto p(y \mid \theta) p(\theta).
 \end{align}
 
 ### versus frequentist learning
@@ -69,7 +69,7 @@ Likelihood Estimation (MLE), we select the parameter that is most likely to have
 generated the observed data:
 
 $$
-\theta_{ML} = \underset{\theta}{\text{argmax}} \; P(y \mid \theta).
+\theta_{ML} = \underset{\theta}{\text{argmax}} \; p(y \mid \theta).
 $$
 
 Using Bayesian Maximum A Posteriori Estimation, however, we select $\theta$ that
@@ -77,8 +77,8 @@ is most likely given the observed data. The difference is that our measure of
 "likelihood given the data" is influenced by our prior beliefs about $\theta$, as in Equation 2:
 
 \begin{align}
-\theta_{MAP} &= \underset{\theta}{\text{argmax}} \; P(\theta \mid y) \\
-  &= \underset{\theta}{\text{argmax}} P(y \mid \theta) P(\theta).
+\theta_{MAP} &= \underset{\theta}{\text{argmax}} \; p(\theta \mid y) \\
+  &= \underset{\theta}{\text{argmax}} p(y \mid \theta) p(\theta).
 \end{align}
 
 Note that with an uninformative prior $\theta \sim \text{Uniform}$, the MAP
@@ -97,7 +97,7 @@ Outside of formal mathematical grounding, Bayesian methods have excellent
 practical benefits as data analysis tools:
 
 1. Even if prior probabilities are not exactly quantifiable, approximations of
-$P(\theta)$ and $P(\theta \mid y)$ are still useful for analyzing how rational
+$p(\theta)$ and $p(\theta \mid y)$ are still useful for analyzing how rational
 learners would change beliefs
 2. Bayesian methods can represent principled ways of doing analysis when there
 are no alternative methods
@@ -239,14 +239,14 @@ When we use the frequentist maximum likelihood estimator, we get an estimated
 $\theta_{ML} = 0$. Since our estimate is subject to sampling error, we commonly 
 construct confidence intervals for these estimates.
 
-TODO: REFINE! WALD NOT
-
-The **Wald interval** is a commonly used confidene interval for a population 
-proportion. However, it falls short here. Although the Wald interval is
-asymptotically correct in its level of confidence, for small sample sizes, this
-property does not hold. For an observation $Y = 20$, for example, the Wald CI
-is, regardless of level of confidence, just $0$. We wouldn't want to say with
-99.999% confidence that the population mean is 0, given our small sample size.
+The **Wald interval** is a commonly used confidene interval for a population
+proportion. However, it is not meant to be used for small sample sizes or
+situations in which the observed proportion is close to (or equals) 0 or 1,
+since in these cases the error of a binomially-distributed observation is not
+at all like the normal distribution For an observation $Y = 20$, for example,
+the Wald CI is, regardless of level of confidence, just $0$. We wouldn't want
+to say with 99.999% confidence that the population mean is 0, given our small
+sample size.
 
 The previous Bayesian estimate, however, works well for both small and large n. 
 With small $n$, the estimator allows us to encode prior beliefs about the true 
@@ -256,17 +256,10 @@ $$
 \hat{\theta} = \mathbb{E}(\theta \mid Y = y) = \frac{n}{n + w}\frac{y}{n} + \frac{w}{n + w}\theta_0.
 $$
 
-Notice that for large $n$ large, this estimator approaches the sample mean $\frac{y}{n}$:
-
-TODO::: REFINE!!!
-
-$$
-\lim_{n \to \infty} \frac{n}{n + w} \frac{y}{n} + \frac{w}{n + w}\theta_0 =
-\frac{y}{n}.
-$$
-
-This captures the intuition that with an infinite amount of data, our priors, 
-regardless of estimate and confidence, are "overwhelmed" by the data.
+Notice that this is kind of an average between the prior expectation $\theta_0$
+and the observed proportion of the data $\frac{y}{n}$, weighted by the amount
+of data $n$. For large $n$, $\hat{\theta}$ becomes dominated by the data,
+regardless of prior estimate and confidence.
 
 Theoretical details on the properties of Bayesian estimators are covered later
 in Section 5.4.
