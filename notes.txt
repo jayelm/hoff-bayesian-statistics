@@ -1,0 +1,35 @@
+comments -
+
+Van Horn (COX's theorem)
+
+F(y) CDF = P(Y < y)
+
+density f(y) = d/dy F(y)
+
+P(Y \in I) = \int f(y) I(y) *over measure I
+
+CDF - F(y)
+
+PROBABILITIES NOTATION NOTATIONSo
+
+p(y) = P(Y = y)
+
+p is used for PMF AND PDF
+
+two variables:
+F(y_1, y_2) = P(Y_1 <= y_1, Y_2 <= y_2)
+
+The joint density of two varables
+f(y_1, y_2) = double partial integrals \partial^2 / \partialy \partial y_2 F(y_1, y_2)
+
+Recover joint CDF by integrating over
+To recover, integral, integraet from =infty to y_1 and y_2 (double integral over the range)
+
+De Finetti's thieorem - clarify infinitely exchangeable
+
+PUT FORMULAS INTO WIKIPEDIA
+
+Continuous doesn't mean uncountable - just lke an interval
+
+HDP - don't mention higher probability, mention higher DENSITy
+DENSITY VS PROBABILITIY

@@ -30,3 +30,297 @@ library(reshape)
 ```
 
 <!-- Begin writing -->
+
+# Joint inference for the mean and variance
+
+For joint inference, we wish to compute the joint probability distribution of
+$(\theta, \sigma^2)$ given the data, which proceeds much like before
+
+$$
+p(\theta, \sigma^2 \mid y_1, \dots, y_n) = \frac{p(y_1, \dots, y_n \mid \theta, \sigma^2) p(\theta, \sigma^2)}{p(y_1, \dots, y_n)}
+$$
+
+Notice that the only real difference in this two parameter case is the joint
+prior $p(\theta, \sigma^2)$, which we should select a conjugate prior
+distribution for to simplify posterior calculation.
+
+Notice that if we split up
+
+$$p(\theta, \sigma^2) = p(\theta \mid \sigma^2) p(\sigma^2)$$ then, from the
+previous section, we already know that the normal distribution is a conjugate
+prior for the $p(\theta \mid \sigma^2)$: $\mathcal{N}(\mu_0, \tau_0^2)$. With
+this selection, we have
+
+\begin{align}
+p(\theta, \sigma^2) &= p(\theta \mid \sigma^2) p(\sigma^2) \\
+&= \text{dnorm}(\theta, \mu_0, \tau_0) \times p(\sigma^2) \\
+\end{align}
+
+Now if we let $\tau_0$ depend on $\sigma^2$, which seems reasonable, this
+simplifies calculations. Specifically, if we let $\tau_0^2 = \sigma^2 / \kappa_0
+\implies \tau_0 = \sigma / \sqrt{\kappa_0}$, i.e. $\tau_0^2$ is the variance of 
+the mean of a sample of size $\kappa_0$ from a population with variance $\sigma^2$:
+
+\begin{align}
+p(\theta, \sigma^2) &= \text{dnorm}(\theta, \mu_0, \tau = \sigma / \sqrt{\kappa_0}) \times p(\sigma^2)
+\end{align}
+
+Now we need to specify $p(\sigma^2)$. We are told that the Gamma distribtion
+(with support on $(0, \infty)$) is not conjugate for the normal variance, but it
+*is* conjugate for the normal *precision* $1 / \sigma^2$. It's not mentioned how
+this is intuitively shown. It probably has something to do with the ease of 
+expressing posterior estimates in terms of precision in the previous section
+where $\sigma^2$ is known.
+
+Let $1 / \sigma^2 \sim \text{Gamma}(a, b)$. Like we have done previously, we
+would like to parameterize this distribution such that we can interpret choices
+of the parameters of the prior as sensibly conveying some prior expectation
+about the precision in this case. If we let
+
+- $a = \nu_0 / 2$
+- $b = a \sigma_0^2 = \frac{\nu_0}{2}\sigma^2_0$
+
+We will show later that we can interpret $(\sigma^2_0, \nu_0)$ as the sample
+variance and sample size of a set of prior observations.
+
+If $1 / \sigma^2 \sim \text{Gamma}(\nu_0 / 2, \sigma^2_0 \nu_0 / 2)$, then
+notice that $\mathbb{E}(1 / \sigma^2) \neq 1 / \mathbb{E}(\sigma^2)$ since the
+inverse is not a linear function. To calculate $\mathbb{E}(\sigma^2)$ requires something more complicated (law of the unconscious statistician?), or we can use the fact that $\sigma^2 \sim \text{Inverse-Gamma}(\nu_0/2, \sigma^2_0 \nu_0 / 2)$, for which
+
+- $\mathbb{E}(\sigma^2) = \frac{\sigma^2_0 \nu_0 / 2}{(\nu_0 / 2) - 1}$
+- $\text{mode}(\sigma^2) = \frac{\sigma^2_0 \nu_0 / 2}{(\nu_0 / 2) + 1}$
+- $\text{Var}(\sigma^2)$ decreases as $\nu_0$ increases.
+
+From this you can already intuit how $\nu_0$ is a sample size, and $\sigma^2_0$
+is an initial guess of the sample variance where the expectation of $\sigma^2$
+more closely approaches $\sigma^2_0$ as $\nu_0$ increases.
+
+## Posterior inference
+
+Now we have fully specified (1) our prior distributions:
+
+\begin{align}
+1 / \sigma^2 &\sim \text{Gamma}(\nu_0 / 2, \sigma^2_0 \nu_0 / 2) \\
+\theta \mid \sigma^2 &\sim \mathcal{N}(\mu_0, \sigma^2 / \kappa_0), \\
+\end{align}
+
+and (2) our sampling model:
+
+$$
+Y_1, \dots, Y_n \mid \theta, \sigma^2 \sim \text{ i.i.d. } \mathcal{N}(\theta, \sigma^2)
+$$
+
+Now we wish to calculate
+$p(\theta, \sigma^2 \mid y_1, \dots, y_n)$
+which we can compute as a product of the marginal and conditional probabilities, just like the prior:
+
+$$
+p(\theta, \sigma^2 \mid y_1, \dots, y_n) =  p(\theta \mid \sigma^2, y_1, \dots, y_n) p(\sigma^2 \mid y_1, \dots, y_n)
+$$
+
+Again, this is convenient because we already know $p(\theta \mid \sigma^2, y_1, \dots, y_n)$ from the one-parameter case:
+
+\begin{align}
+\theta \mid sigma^2, y_1, \dots y_n \sim \mathcal{N}(\mu_n, \tau_n^2)
+\end{align}
+
+where
+
+\begin{align}
+\mu_n &= \frac{ \frac{1}{\tau_0^2} \mu_0 + \frac{n}{\sigma^2} \bar{y} }{ \frac{1}{\tau_0^2} + \frac{n}{\sigma^2} } \\
+&= \frac{ \frac{\kappa_0}{\sigma^2} \mu_0 + \frac{n}{\sigma^2} \bar{y} }{ \frac{\kappa_0}{\sigma^2} + \frac{n}{\sigma^2} } & \text{Sub $\tau_0^2 = \sigma^2 / \kappa_0$} \\
+&= \frac{ \kappa_0 \mu_0 + n \bar{y} } { \kappa_0 + n } & \text{$\sigma^2$s cancel} \\
+\end{align}
+
+and
+
+\begin{align}
+\tau_n^2 &= \frac{1}{\frac{1}{\tau_0^2} + \frac{n}{\sigma^2}} \\
+&= \frac{1}{\frac{\kappa_0}{\sigma^2} + \frac{n}{\sigma^2}} & \text{Sub $\tau_0^2 = \sigma^2 / \kappa_0$} \\
+&= \frac{\sigma^2}{\kappa_0 + n}.
+\end{align}
+
+If we let $\kappa_n = \kappa_0 + n$ (remember we will interpret $\kappa_0$ as a prior sample size, and $n$ as this sample size), then we have
+
+\begin{align}
+\theta \mid \sigma^2, y_1, \dots y_n \sim \mathcal{N}(\mu_n, \sigma^2 / \kappa_n)
+\end{align}
+
+Where like before, $\mu_n$ is a weighted average of $\mu_0$ and $\bar{y}$
+dependent on the "prior" sample size $\kappa_0$ and the sample size $n$, and
+$\sigma^2 / \kappa_n$ is the sampling variance of the sample mean given known
+variance $\sigma^2$ and our "sample size" $\kappa_n$.
+
+Recall our posterior distribution decomposition:
+
+$$
+p(\theta, \sigma^2 \mid y_1, \dots, y_n) =  p(\theta \mid \sigma^2, y_1, \dots, y_n) p(\sigma^2 \mid y_1, \dots, y_n)
+$$
+
+Once we calculate the second component, the posterior distribution of $\sigma^2$, we will have
+fully specified the joint posterior distribution.
+
+\begin{align}
+p(\sigma^2 \mid y_1, \dots, y_n) &\propto p(\sigma^2) p(y_1, \dots, y_n \mid \sigma^2) \\
+&= p(\sigma^2) \int p(y_1, \dots, y_n \mid \theta, \sigma^2) p(\theta \mid \sigma^2) \; d\theta \\
+&= \text{dinverse-gamma}(\sigma^2, \nu_0 / 2, \sigma_0^2 \nu_0 / 2) \times \\ &\quad \int \left[ \left( \prod_{i = 1}^{n} p(y_i \mid \theta, \sigma^2) \right) \times \text{dnorm}(\theta, \mu_0, \sigma^2 / \kappa_0)  \right] \; d\theta \\
+\end{align}
+
+This integral is left as an exercise (Exercise 5.3). The result is presumably that
+
+\begin{align}
+\sigma^2 \mid y_1, \dots, y_n & \sim \text{Inverse-Gamma}(\nu_n / 2, \sigma_n^2 \nu_n / 2) \\
+1 / \sigma^2 \mid y_1, \dots, y_n &\sim \text{Gamma}(\nu_n / 2, \sigma_n^2 \nu_n / 2)
+\end{align}
+
+where
+
+- $\nu_n = \nu_0 + n$, like $\kappa_n$
+- $\sigma_n^2 = \frac{1}{\nu_n} \left[ \nu_0 \sigma_0^2 + (n - 1)s^2 + \frac{\kappa_0 n}{\kappa_n} (\bar{y} - \mu_0)^2 \right]$
+
+$\nu_n$ is fairly intuitive, it acts as a sample size which is the "prior sample size" of the variance plus the sample size $n$. $\sigma_n^2$ is a bit harder to understand
+
+**TODO: INTERPRETATION OF $\sigma_n^2$**
+
+## Summary of posterior inference
+
+This is a lot to handle, since there are a lot of moving parts. In sum, for
+inference with the normal model, there are four prior parameters to specify:
+
+- $\sigma_0^2$, an initial estimate for the variance;
+- $\nu_0$, a "prior sample size" from which the initial estimate of the *variance* is observed;
+- $\mu_0$, an initial estimate for the population mean;
+- $\kappa_0$, a "prior sample size" from which the initial estimate of the *mean* is observed
+
+Then we have
+- $1 / \sigma^2 \sim \text{Gamma}(\nu_0 / 2, \sigma^2_0 \nu_0 / 2)$
+ - $\implies \mathbb{E}(\sigma^2) = \sigma^2_0 \frac{\nu_0 / 2}{\nu_0 / 2 - 1}$ (use expectation of inverse gamma)
+- $\theta \mid \sigma^2 \sim \mathcal{N}(\mu_0, \sigma^2 / \kappa_0)$
+ - $\implies \mathbb{E}(\theta) = \mu_0$
+ 
+And after posterior inference, we have
+- $1 / \sigma^2 \mid y_1, \dots, y_n \sim \text{Gamma}(\nu_n / 2, \sigma^2_n \nu_n / 2)$
+ - Where $\mathbb{E}(\sigma^2 \mid y_1, \dots, y_n) = $ (use expectation of inverse gamma?)
+- $\theta \mid \sigma^2, y_1, \dots, y_n \sim \mathcal{N}(\mu_n, \sigma^2 / \kappa_n)$
+ - Where $\mathbb{E}(\theta \mid y_1, \dots, y_n, \sigma^2) = \mu_n = \frac{\kappa_0 \mu_0 + n \bar{y}}{\kappa_n}$
+
+Note how the prior sample sizes for the variance and the mean are weirdly
+decoupled, and also that they interact **TODO**
+
+## Example
+
+Back to midge wing length, although this time, we are leaving our estimate of 
+the variance of the population free as well.
+
+From other populations, say that we weakly believe that our prior estimates of
+the population mean and variance are $\mu_0 = 1.9$ and $\sigma_0^2 = 0.01$,
+respectively. Since this is a weak belief we will pick $\kappa_0 = \nu_0 = 1$. Now our prior distributions are
+
+- $1 / \sigma^2 \sim \text{Gamma}(0.5, 0.005)$
+- $\theta \mid \sigma^2 \sim \mathcal{N}(1.9, \sigma^2 / \kappa_0)$
+
+Recall that our data are
+
+```{r}
+y = c(1.64, 1.70, 1.72, 1.74, 1.82, 1.82, 1.82, 1.90, 2.08)
+n = length(y)
+ybar = mean(y)
+s2 = var(y)
+```
+
+Now we calculate the parameters of the posterior distributions
+
+- $\kappa_n = \kappa_0 + n = 1 + 9 = 10$
+- $\nu_n = \nu_0 + n = 1 + 9 =10$
+- $\mu_n = \frac{\kappa_0 \mu_0 + n\bar{y}}{\kappa_n} = \frac{1.9 + 9(1.804)}{10} = 1.814$
+- \begin{align}
+\sigma_n^2 &= \frac{1}{\nu_n} \left[ \nu_0 \sigma_0^2 + (n - 1)s^2 + \frac{\kappa_0 n}{\kappa_n} (\bar{y} - \mu_0)^2 \right] \\
+&= \frac{1}{10} \left[ 0.01 + 8(0.168) + \frac{9}{10} (1.804 - 1.9)^2 \right] \\
+&= \frac{1}{10} \left[ 0.01 + 0.135 + 0.008 \right] \\
+&= 0.015
+\end{align}
+
+So our joint posterior distribution is
+
+\begin{align}
+1 / \sigma^2 \mid y_1, \dots, y_n &\sim \text{Gamma}(10/2 = 5, 10(0.015 / 2) = 0.075) \\
+\theta \mid \sigma^2, y_1, \dots, y_n &\sim \mathcal{N}(1.814, \sigma^2 / 10)
+\end{align}
+
+Now we can plot the posterior distribution for various values of $\theta$ and $\sigma^2$.
+
+```{r}
+# Prior
+mu0 = 1.9
+kappa0 = 1
+s20 = 0.01
+nu0 = 1
+
+kappan = kappa0 + n
+nun = nu0 + n
+mun = (kappa0 * mu0 + n * ybar) / kappan
+s2n = (1 / nun) * (nu0 * s20 + (n - 1) * s2 + (kappa0 * n / kappan) * (ybar - mu0)^2)
+
+Theta = seq(1.6, 2.0, by = 0.005)
+Sigma2 = seq(0, 0.04, by = 0.0001)
+
+library(invgamma)
+post.func = function(theta, sigma2) {
+  dnorm(theta, mun, sqrt(sigma2 / kappan)) * dinvgamma(sigma2, nun / 2, s2n * nun / 2)
+}
+
+d = outer(Theta, Sigma2, post.func)
+rownames(d) = Theta
+colnames(d) = Sigma2
+
+df = melt(d)
+colnames(df) = c('theta', 'sigma2', 'density')
+
+ggplot(df, aes(x = theta, y = sigma2, z = density)) +
+  geom_contour(aes(color = ..level..)) +
+  guides(color = FALSE)
+```
+
+## Monte carlo sampling
+
+We can simulate values from the posterior by first sampling $\sigma^{2(n)}$ from
+its inverse gamma distribution, and $\theta^{(n)}$ from its normal distribution
+conditioned on $\sigma^{2(n)}$. Then $\{\theta^{(n)}, \sigma^{2(n)}\}$ represent
+samples from the joint distribution $p(\theta, \sigma^2 \mid y_1, \dots, y_n)$,
+and either set of values by themselves represents samples from the full marginal
+distribution. This is intuitive for $\sigma^{2(n)}$ but less so for
+$\theta^{(n)}$. The key is to notice that, although $\theta^{(n)}$ is sampled
+conditioned on $\sigma^{2(n)}$, multiple $\theta^{(n)}$ samples are conditioned
+on multiple *different* $\sigma^{2(n)}$s, so the $\theta^{(n)}$ do indeed
+represent samples from the marginal distribution.
+
+```{r}
+s2.mc = rinvgamma(10000, nun / 2, s2n * nun / 2)
+theta.mc = rnorm(10000, mun, sqrt(s2.mc / kappan)) # Accepts a vector of parameters
+mean(theta.mc)
+quantile(theta.mc, c(0.025, 0.975))
+```
+
+```{r}
+ggplot(data.frame(sigma2 = s2.mc, theta = theta.mc)) +
+  geom_point(aes(x = theta, y = sigma2), alpha = 0.1)
+```
+
+## Improper priors
+
+What if we want to use *no* prior information? Imagine $\kappa_0, \nu_0
+\rightarrow 0$.
+
+TODO
+
+"Significant algebra"
+http://www.stat.columbia.edu/~fwood/Teaching/w4315/Fall2009/nuisance_parameters.pdf
+
+# Bias, variance, and mean squared error
+
+Now we are diving into the properties of estimators for posterior parameters.
+
+> A *point estimator* of an unknown parameter $\theta$ is a function that converts your data into a single element of the parameter space $\Theta$. Good point estimators should hopefully approximate (and *reliably* approximate) the true value of $\theta$; we can make these properties formal.
+
+In Bayesian analysis, point estimators are usually functions of the posterior
+distribution of the parameter, such as the expectation.

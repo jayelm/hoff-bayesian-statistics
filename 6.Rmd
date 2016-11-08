@@ -1,0 +1,262 @@
+---
+title: "Chapter 6: Posterior approximation with the Gibbs sampler"
+author: "Jesse Mu"
+date: "November 4, 2016"
+output:
+  html_document:
+    highlight: pygments
+    toc: yes
+    toc_float: yes
+---
+
+<!-- Setup -->
+
+<script type="text/x-mathjax-config">
+MathJax.Hub.Config({
+  TeX: { 
+      equationNumbers: {
+            autoNumber: "all"
+      } 
+  }
+});
+</script>
+
+```{r echo=FALSE, message=FALSE}
+knitr::opts_chunk$set(fig.align = 'center', message = FALSE)
+library(knitr)
+library(ggplot2)
+library(cowplot)
+library(reshape)
+```
+
+<!-- Begin writing -->
+
+# A semiconjugate prior distribution
+
+In Chapter 5, we performed two-parameter inference by decomposing the prior
+$p(\theta, \sigma^2) = p(\theta \mid \sigma^2) p(\sigma^2)$. So our prior
+distribution on $\theta$ relates to the variance $\sigma^2$:
+
+$$
+\theta \mid \sigma^2 \sim \mathcal{N}(\mu_0, \sigma^2 / \kappa_0)
+$$
+
+However, consider that we may want to decouple our prior specification
+
+# Discrete approximations
+
+```{r}
+y = c(1.64, 1.70, 1.72, 1.74, 1.82, 1.82, 1.82, 1.90, 2.08)
+
+n = length(y)
+ybar = mean(y)
+s2 = var(y)
+
+# Prior
+
+mu0 = 1.9
+# Tau chosen such that most of the mass of the normal distribution > 0
+t20 = 0.95^2
+s20 = 0.1
+nu0 = 1
+
+Theta = seq(1.505, 2, length = 100)
+Sigma2 = seq(0.005, 0.05, length = 100)
+
+# This calculates p(sigma2, theta, y_1, \dots, y_n)
+library(invgamma)
+post.func = Vectorize(function(theta, sigma2) {
+  dnorm(theta, mu0, sqrt(t20)) *
+    dinvgamma(sigma2, nu0 / 2, s20 * nu0 / 2) *
+    prod(dnorm(y, theta, sqrt(sigma2)))
+})
+
+d = outer(Theta, Sigma2, post.func)
+rownames(d) = Theta
+colnames(d) = Sigma2
+d = d / sum(d)
+
+df = melt(d)
+colnames(df) = c('theta', 'sigma2', 'density')
+
+ggplot(df, aes(x = theta, y = sigma2, z = density)) +
+  geom_contour(aes(color = ..level..))
+```
+
+# Sampling from the conditional distributions
+
+Let $\theta$ be known. Then the conditional distribution of $\tilde{\sigma}^2$ given $\theta$ and $y_1, \dots, y_n$ is
+
+
+# Gibbs sampling
+
+```{r}
+S = 1000
+PHI = matrix(nrow = S, ncol = 2)
+PHI[1, ] = phi = c(ybar, 1 / s2) # Start with sample mean + variance
+
+set.seed(1) # Reproducibility
+# Should use a for loop, as there are variables we need to keep track of through
+# iterations
+for (s in 2:S) {
+  # Sample theta based on \sigma^2 (phi[2])
+  # According to normal(\mu_n, \tau^2_n) where \mu_n and \tau^2_n are as below
+  mun = (mu0 / t20 + n * ybar * phi[2]) / (1/t20 + n * phi[2])
+  t2n = 1 / (1 / t20 + n * phi[2])
+  phi[1] = rnorm(1, mun, sqrt(t2n))
+  
+  # Sample 1/sigma^2 based on \theta
+  nun = nu0 + n
+  s2n = (nu0 * s20 + (n - 1) * s2 + n * (ybar - phi[1])^2) / nun
+  # This posterior distribution: inverse-gamma(\nu_n / 2, \sigma^2_n(\theta)
+  # \nu_n / 2)
+  phi[2] = rgamma(1, nun / 2, s2n * nun / 2)
+  
+  PHI[s, ] = phi
+}
+```
+
+```{r echo=FALSE}
+phi.df = data.frame(PHI)
+colnames(phi.df) = c('theta', '1/sigma^2')
+phi.df$n = 1:nrow(phi.df)
+
+fst = head(phi.df, n = 5)
+fst$total = '5'
+snd = head(phi.df, n = 15)
+snd$total = '15'
+thd = head(phi.df, n = 100)
+thd$total = '100'
+
+facets = rbind(fst, snd, thd)
+facets$total = factor(facets$total, levels = c('5', '15', '100'))
+ggplot(facets, aes(x = theta, y = `1/sigma^2`)) +
+  geom_text(aes(label = n)) +
+  geom_path(alpha = 0.5) +
+  facet_wrap(~ total)
+```
+
+```{r echo=FALSE}
+ggplot(phi.df, aes(x = theta, y = `1/sigma^2`)) + geom_point()
+# CI for population mean - first column is theta
+quantile(PHI[, 1], c(0.025, 0.5, 0.975))
+# CI for population precision, second column
+quantile(PHI[, 2], c(0.025, 0.5, 0.975))
+# CI for population stddev, arbitrary function of second column
+quantile(1 / sqrt(PHI[, 2]), c(0.025, 0.5, 0.975))
+
+# For later
+midge.df = phi.df
+```
+
+# Introduction to MCMC diagnostics
+
+```{r}
+# Params
+PROB.DENS = c(0.45, 0.10, 0.45)
+MU.DENS = c(-3, 0, 3)
+S2.DENS = c(1/3, 1/3, 1/3)
+
+# Calculating the actual density
+ddens = function(n) {
+  PROB.DENS[1] * dnorm(n, MU.DENS[1], sqrt(S2.DENS[1])) +
+    PROB.DENS[2] * dnorm(n, MU.DENS[2], sqrt(S2.DENS[2])) +
+    PROB.DENS[3] * dnorm(n, MU.DENS[3], sqrt(S2.DENS[3]))
+}
+theta.dist = data.frame(
+  theta = seq(-6, 6, length = 500),
+  density = ddens(seq(-6, 6, length = 500))
+)
+
+# Monte carlo approximation
+rdens = function(n) {
+  # Monte carlo approximation: sample a delta, then sample according to the
+  # associated normal
+  Delta = sample.int(3, size = n, prob = PROB.DENS, replace = TRUE)
+  rnorm(n, MU.DENS[Delta], sqrt(S2.DENS[Delta]))
+}
+theta.mc = data.frame(theta = rdens(1000))
+
+ggplot(theta.dist, aes(x = theta, y = density)) +
+  geom_histogram(mapping = aes(x = theta, y = ..density..), data = theta.mc,
+                 color = 'black', fill = 'grey') +
+  geom_line()
+```
+
+```{r}
+# Gibbs sampling with S = 1000
+S = 100000
+PHI = matrix(nrow = S, ncol = 2)
+# Let delta0 = 2 and theta0 = 0
+PHI[1, ] = phi = c(2, 0)
+
+set.seed(1) # Reproducibility
+# Should use a for loop, as there are variables we need to keep track of through
+# iterations
+for (s in 2:S) {
+  # Sample delta s+1 based on theta s
+  probs = sapply(1:3, function(d) {
+    PROB.DENS[d] * dnorm(phi[2], MU.DENS[d], sqrt(S2.DENS[d]))
+  })
+  probs = probs / sum(probs)
+  phi[1] = sample.int(3, size = 1, prob = probs)
+  
+  # Sample theta s+1 based on delta (easy)
+  phi[2] = rnorm(1, MU.DENS[phi[1]], sqrt(S2.DENS[phi[1]]))
+  
+  PHI[s, ] = phi
+}
+
+theta.mcmc = data.frame(PHI)
+colnames(theta.mcmc) = c('delta', 'theta')
+theta.mcmc$iteration = 1:nrow(theta.mcmc)
+
+# How well does this work?
+ggplot(theta.dist, aes(x = theta, y = density)) +
+  geom_histogram(mapping = aes(x = theta, y = ..density..), data = theta.mcmc,
+                 color = 'black', fill = 'grey') +
+  geom_line()
+# Traceplot
+ggplot(theta.mcmc, aes(x = iteration, y = theta)) +
+  geom_point() +
+  geom_line(alpha = 0.25)
+```
+
+Try changing code to 10000 and see if it's any better
+
+### Getting it right
+
+Estimate of MCMC depends on autocorrelation. Each bar represents the
+autocorrelation for varying levels of lag
+
+```{r}
+acf(theta.mcmc$theta, lag.max = 50)
+```
+
+Measure effective sample size
+
+```{r}
+library(coda)
+effectiveSize(theta.mcmc$theta)
+```
+
+### MCMC diagnostics for semiconjugate normal analysis
+
+Back to midge length...
+
+```{r}
+midge.df$iteration = midge.df$n
+ggplot(midge.df, aes(x = iteration, y = theta)) +
+  geom_point() + geom_line(alpha = 0.25)
+ggplot(midge.df, aes(x = iteration, y = `1/sigma^2`)) +
+  geom_point() + geom_line(alpha = 0.25)
+```
+
+```{r}
+acf(midge.df$theta)
+effectiveSize(midge.df$theta)
+acf(midge.df$`1/sigma^2`)
+effectiveSize(midge.df$`1/sigma^2`)
+```
+
+TODO: Calculate effective sample size according to Gelman

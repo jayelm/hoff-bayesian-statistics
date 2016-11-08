@@ -72,6 +72,7 @@ P(H_i \mid E) = \frac{\overbrace{P(E \mid H_i)}^{\text{likelihood}} \overbrace{P
 Two events $F$ and $G$ are *independent* if $P(F \cap G) = P(F) P(G)$.
 
 Two events $F$ and $G$ are *conditionally independent* given $H$ if
+
 \begin{align}
 P(F \cap G \mid H) = P(F \mid H) P(G \mid H)
 \end{align}
@@ -84,21 +85,22 @@ networks.
 # Random variables and their distributions
 
 A random variable $Y$ is *discrete* if the set of all its possible values 
-$\mathcal{Y}$ is *countable*. Examples include the binomial and poisson 
-distributions.
+$\mathcal{Y}$ is countable, i.e. they can be enumerated   $\mathcal{Y} = \{y_1, y_2, \dots \}$ Examples include the binomial and poisson 
+distributions. Discrete random variables have a *probability mass function*
+(PMF) $f(y) = P(Y = y)$ which assigns a certain probability to every discrete point in its sample
+space. From this probability mass function, a *continuous distribution function*
+(CDF) is also defined:
 
-$Y$ is *continuous* if $\mathcal{Y}$ is *uncountable*. Note that the probability
-of $Y$ taking a single value in the sample space is 0. So we use cumulative
-distribution functions (CDFs) to define probability distributions
+$$F(y) = P(Y \leq y) = \sum_{y_i \leq y} f(y_i)$$
+
+$Y$ is *continuous* if $\mathcal{Y}$ can take *any* value in an interval. Therefore, the probability
+of $Y$ taking a single value in the sample space is 0. So instead we describe
+such distributions with *probability density functions* (PDFs) $f(y)$, which must be
+integrated over an interval to obtain a probability: $P(a \leq y \leq b) =
+\int_a^b f(y) \; dy$. These variables also have CDFs:
 
 \begin{align}
-F(y) = P(Y \leq y)
-\end{align}
-
-and the probability distribution is the $p(y)$ that satisfies
-
-\begin{align}
-f(x) = \int_{-\infty}^x p(y) \; dy
+F(y) = P(Y \leq y) = \int_{-\infty}^y f(x) \; dx
 \end{align}
 
 Examples include the normal and beta distributions.
@@ -112,6 +114,8 @@ these quantities are *not* the same.
 We also use variance and quantiles to measure the *spread* of distributions.
 
 ## Joint distributions
+
+### Discrete
 
 Let $Y_1$ and $Y_2$ be random variables with sample spaces $\mathcal{Y}_1$ and 
 $\mathcal{Y}_2$. Then the joint pdf/density of $Y_1$ and $Y_2$ is defined as:
@@ -142,11 +146,13 @@ However, given only marginal densities $p(y_1)$ and $p(y_2)$, we can't
 reconstruct the joint distribution, since we don't know whether the events are
 independent.
 
+### Continuous
+
 In the continuous case, the probability density function is a function of $y_1$
 and $y_2$ such that the CDF is
 
 $$
-F(y_1, y_2) = \int_{-\infty}^{x} \int_{-\infty}^{y} p(y_1, y_2) \; dy_2 \; dy_1.
+F(y_1, y_2) = \int_{-\infty}^{y_1} \int_{-\infty}^{y_2} p(y_1, y_2) \; dy_2 \; dy_1.
 $$
 
 Obtaining the marginal densities can be done by integrating out the irrelevant variable:
@@ -265,7 +271,7 @@ a sequence of length $m$.
 
 With the sustitution $\frac{r}{m} = \theta$, we can re-package the summation of
 discrete $r$ as an integral over a stepwise function $F_m$ with domain $[0, 1]$
-that jumps $q_r$ at every interval $0 \leq r / m$ \leq 1$:
+that jumps $q_r$ at every interval $0 \leq r / m \leq 1$:
 
 $$
 p_{k, n} = \int_{0}^{1} \frac{(\theta m)_k ((1 - \theta)m)_{n - k}}{(m)_n} F_m(d\theta).

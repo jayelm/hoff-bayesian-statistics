@@ -86,14 +86,14 @@ of the posterior probability, not just the shape. This requires calculating $p(y
 \begin{align}
 1 &= \int_0^1 p(\theta \mid y) \; d\theta & (\text{Law of total probability}) \\
 &= \int_0^1 \theta^{111} (1 - \theta)^{11} / p(y) \; d\theta \\
-&= \frac{1}{p(y)} \int_0^1 \theta^{118} (1 - \theta)^11 \; d\theta & (\text{Note
+&= \frac{1}{p(y)} \int_0^1 \theta^{118} (1 - \theta)^{11} \; d\theta & (\text{Note
 $p(y)$ is constant for fixed $y$})\\
 &= \frac{1}{p(y)} \frac{\Gamma(119) \Gamma(12)}{\Gamma(131)} & (\text{From calculus})\\
 \end{align}
 
 so $p(y) = \frac{\Gamma(119) \Gamma(12)}{\Gamma(131)} \approx 2.89 \times
 10^{-18}$. Since our $y_i$ are exchangeable, this holds true for any sequences
-of $y_i$ with 188 ones and 11 zeros.
+of $y_i$ with 118 ones and 11 zeros.
 
 So, finally, the posterior probability is 
 
@@ -189,7 +189,7 @@ $p(\theta)$ and $p(\theta \mid y)$ are both proportional to $\theta^{a - 1} (1 -
 
 
 Now, since we know that as probability distributions, $\int p(\theta) = \int
-p(\theta \mid y) = 1$, we also know that the functions share the same *scale*,
+p(\theta \mid y) \; d\theta = 1$, we also know that the functions share the same *scale*,
 which means that $p(\theta \mid y)$ is actually a Beta PDF!
 
 $$
@@ -237,7 +237,7 @@ to the Bayesian framework). These calculations confirm this:
 \begin{align}
 p(\tilde{Y} = 1 \mid y) &= \int p(\tilde{Y} = 1, \theta \mid y) \; d\theta & \text{(LTP)} \\
 &= \int p(\tilde{Y} = 1 \mid \theta, y) p(\theta \mid y) \; d\theta & \text{(Chain rule)} \\
-&= \int \theta p(\theta \mid y) & \text{(Since $\tilde{Y}$ is binary)} \\
+&= \int \theta p(\theta \mid y) \; d\theta & \text{(Since $\tilde{Y}$ is binary)} \\
 &= \mathbb{E}(\theta \mid y).
 \end{align}
 
@@ -309,7 +309,7 @@ ggplot(df, aes(x = theta, y = p)) +
 ```
 
 However, since some of the values for theta *outside* of the interval have 
-higher probailities than values of theta *inside* the interval, another option 
+higher density than values of theta *inside* the interval, another option 
 is to force "symmetry" of heights by searching for the **highest posterior 
 density** region, which can be intuitively found by drawing a horizontal line 
 down the density until the region contained by the line is $1 - \alpha$% of the 
@@ -380,7 +380,7 @@ p(\theta \mid y) &= \frac{p(\theta) p(y \mid \theta)}{p(y)} \\
 \end{align}
 
 Where $c = f(y, a, b)$ is throwing all of the stuff that doesn't depend on
-$\theta$ into some normalizing constant such that $\int p(\theta \mid y) = 1$.
+$\theta$ into some normalizing constant such that $\int p(\theta \mid y) \; d\theta = 1$.
 Like the Binomial model, we recognize from the proportionality to $\theta^{a - 1} e^{-b \theta}$ that the posterior distribution of $\theta$ is Gamma distributed. Specifically
 
 \begin{align}
@@ -427,14 +427,14 @@ with increased variance owing to the increased uncertainty on the value of
 $\theta$. Notice
 
 \begin{align}
-\mathbb{E}(\tilde{Y} \mid y_1, dots, y_n) &= \frac{a + \sum y_i}{b + n} = \mathbb{E}(\theta \mid y_1, \dots, y_n) \\
-\text{Var}(\tilde{Y} \mid y_1, dots, y_n) &= \frac{a + \sum y_i}{b + n} \frac{b
+\mathbb{E}(\tilde{Y} \mid y_1, \dots, y_n) &= \frac{a + \sum y_i}{b + n} = \mathbb{E}(\theta \mid y_1, \dots, y_n) \\
+\text{Var}(\tilde{Y} \mid y_1, \dots, y_n) &= \frac{a + \sum y_i}{b + n} \frac{b
 + n + 1}{b + n} = \mathbb{E}(\theta \mid y_1, \dots, y_n) \times \frac{b + n + 1}{b + n}
 \\
 \end{align}
 
-So as $n$ grows large, the variance on $\tilde{Y}$ approaches the variance of
-$\mathbb{E}$.
+So as $n$ grows large, the variance on $\tilde{Y}$ approaches the variance of its expectation
+$\mathbb{E}(\tilde{Y})$.
 
 ## Example: Birth Rates
 
@@ -544,7 +544,7 @@ To return to a density on $\theta$, let $\theta = g(\phi) = \frac{e^\phi}{e^\phi
 change of variables formula (Exercise 3.10),
 
 \begin{align}
-p_{\theta}(\theta \mid n_0, t_0) &= p_{\phi}(h(\theta) \mid n_0, t_0) \times \| \frac{dh}{d\theta} \| \\
+p_{\theta}(\theta \mid n_0, t_0) &= p_{\phi}(h(\theta) \mid n_0, t_0) \times \left| \frac{dh}{d\theta} \right| \\
 &\propto \left(1 + \text{exp}\left(\log \left(\frac{\theta}{1 - \theta}\right)\right)\right)^{-n_0} \text{exp}\left(n_0 t_0 \log \left(\frac{\theta}{1 - \theta}\right) \right) \times \frac{1}{\theta - \theta^2} \\
 &\propto \left(1 + \frac{\theta}{1 - \theta} \right)^{-n_0} \left(\frac{\theta}{1 - \theta}\right)^{n_0 t_0} \times \frac{1}{\theta - \theta^2} \\
 &\propto \left(\frac{1}{1 - \theta} \right)^{-n_0} \left(\frac{\theta}{1 - \theta}\right)^{n_0 t_0} \times \frac{1}{\theta (1 - \theta)} \\
@@ -554,7 +554,7 @@ p_{\theta}(\theta \mid n_0, t_0) &= p_{\phi}(h(\theta) \mid n_0, t_0) \times \| 
 &= \text{dbeta}(\theta, n_0 t_0, n_0 (1 - t_0))
 \end{align}
 
-So the posterior is (not sure if you can do this?)
+So the posterior is
 
 \begin{align}
 p(\theta \mid y_1, \dots, y_n) &= \text{dbeta}\left(\theta,\; (n_0 + n)\left(n_0 t_0 + \sum t(y_i) \right),\; (n_0 + n) \left(1 - n_0 t_0 - \sum t(y_i) \right) \right)
@@ -719,6 +719,15 @@ library(directlabels)
 direct.label(p, method = 'bottom.pieces')
 ```
 
+One can use this plot to determine whether or not they should believe that
+$\theta > 0.5$ by quantifying their prior beliefs about the proportion with two
+factors: $\theta_0$, an initial estimate of the true proportion, and $w$, the
+"sample size" of observed individuals that contributed to the initial estimate.
+Then, viewing the corresponding contour on this plot would give an estimate of
+the posterior proportion given these two variables. It is shown here that
+$\theta > 0.5$ for most prior beliefs except for those with relatively low and
+very strong estimates about $\theta_0$.
+
 ## 3.3
 
 ### a
@@ -873,7 +882,7 @@ p(\phi \mid y_1, \dots, y_n) &\propto p(\phi) p(y_1, \dots, y_n \mid \phi) \\
 \end{align}
 
 So the posterior is another weighted mixture. However I don't believe the 
-weights of the relative components are preserved (as in the Beta mixtures
+weights of the relative components are preserved (neither are they in the Beta mixtures
 above).
 
 ### b

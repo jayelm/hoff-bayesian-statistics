@@ -106,15 +106,16 @@ Notice that we can implement computational tools that allow us to sample
 arbitrarily from the Gamma distributions of $\theta_1$ and $\theta_2$. The 
 details of implementing these samplers, i.e. functions that can draw some 
 $\theta_i \sim p(\theta \mid y)$, are non-trivial - for an example of 
-algorithmically sampling from a Normal distribution, see the [Box-Muller 
-transform](https://en.wikipedia.org/wiki/Box%E2%80%93Muller_transform). However,
+algorithmically sampling from a Normal distribution given just pseudo-random number generators, see the [Box-Muller 
+transform](http://www.math.nyu.edu/faculty/goodman/teaching/MonteCarlo2005/notes/GaussianSampling.pdf).
+However,
 we will assume that we have these functions implemented. For example, in R we 
 can represent $n$ random draws from a gamma distribution with parameters $a$ and
 $b$ with the function call `rgamma(n, a, b)`.
 
 The law of large numbers states that, for $S$ i.i.d. draws $\theta^1, \dots,
 \theta^S$ from a distribution $p(\theta)$, as $S \rightarrow \infty$,
-$\frac{1}{S} \sum \theta^i = \mathbb{E}(p(\theta))$. This also implies that the
+$\frac{1}{S} \sum \theta^i \rightarrow \mathbb{E}(p(\theta))$. This also implies that the
 variance of the sample approaches the variance of the distribution (to calcualte
 this, expand the formula for the variance of $\theta$ into a combination of
 expectations, then use the law of large numbers of the expectations).
@@ -215,7 +216,7 @@ $$
 
 where $\hat{\sigma}^2$ is the unbiased estimator of the population variance 
 (hence the *approximate* confidence interval; divide by $S - 1$, not $S$). Using
-this, we bootstrap the number of samples we ought to take to report our estimate
+this, we can estimate the number of samples we ought to take to report our estimate
 to a certain degree of precision. We ought to take enough samples such that the 
 standard error $\sqrt{\hat{\sigma}^2/S} < \alpha$ where $\alpha$ is the desired 
 level of precision. Of course, since we don't know how variable our samples are,
@@ -227,10 +228,10 @@ required for the desired precision.
 
 # Posterior inference for arbitrary functions
 
-If we can sample $\theta^1, \dots, \theta^S \sim p(\theta \mid y)$ i.i.d., then
+If we can sample $\theta^{(1)}, \dots, \theta^{(S)} \sim p(\theta \mid y)$ i.i.d., then
 we can obtain distributions for any arbitrary function $g(\theta)$. We just need
-to sample $S$ $\theta^i$, then apply $g$ to each $\theta^i$ to obtain the value
-of interest, say $\gamma^i$. This step is deterministic, so we are actually
+to sample $S$ $\theta^{(i)}$, then apply $g$ to each $\theta^{(i)}$ to obtain the value
+of interest, say $\gamma^{(i)}$. This step is deterministic, so we are actually
 sampling from $p(\gamma \mid y)$. Thus, by the sample law of large numbers and
 central limit theorem derivations as before, Monte Carlo estimations can
 estimate arbitrary functions to any degree of accuracy. This is very powerful
@@ -290,6 +291,7 @@ colnames(combined) = c('n', 'type', 'value')
 
 ggplot(combined, aes(x = value, group = type, color = type)) +
   geom_density(fill = NA) +
+  scale_x_continuous(limits = c(-5, 5)) +
   xlab('gamma')
 ```
 
@@ -297,9 +299,9 @@ ggplot(combined, aes(x = value, group = type, color = type)) +
 
 We can now return back to the earlier example with two separate Poisson models 
 of the number of children of women's without and with bachelor's degrees. Since
-$\theta_1$ and $\theta_2$ are independent, we can sample a pair $(\theta^i_1,
-\theta^i_2)$ from separate samples from $p(\theta_1 \mid y)$ and $p(\theta_2
-\mid y)$, such that many such pairs $(\theta^i_1, \theta^i_2)$ will (by Monte
+$\theta_1$ and $\theta_2$ are independent, we can sample a pair $(\theta^{(i)}_1,
+\theta^{(i)}_2)$ from separate samples from $p(\theta_1 \mid y)$ and $p(\theta_2
+\mid y)$, such that many such pairs $(\theta^{(i)}_1, \theta^{(i)}_2)$ will (by Monte
 Carlo estimation) approximate the joint density of $p(\theta_1, \theta_2)$
 without needing to calculate or integrate over the joint density by hand. Again,
 
@@ -321,8 +323,8 @@ Also, like the gamma example above, we can calculate some arbitrary function.
 Say we are interested in the ratio $f(\theta_1, \theta_2) = \theta_1/\theta_2$ 
 of the means. On average, how many times more children do women without 
 bachelor's degrees have compared to those with bachelor's degrees. Then we
-sample multiple pairs $(\theta^i_1, \theta^i_2)$, and multiple pairs $\gamma^i =
-f(\theta^i_1, \theta^i_2)$.
+sample multiple pairs $(\theta^{(i)}_1, \theta^{(i)}_2)$, and multiple pairs $\gamma^i =
+f(\theta^{(i)}_1, \theta^{(i)}_2)$.
 
 ```{r warning=FALSE}
 # Common prior
@@ -363,11 +365,11 @@ quantities (i.e. parameters) are integrated out.
 For example, given a prior distribution $p(\theta)$, how can we calculate the
 *prior predictive distribution* $p(\tilde{y})$? Often we have an analytical
 solution for the form a posterior predictive distribution for a given model. But
-often we can simply sample many $\theta^i$ from our posterior distribution on
-$\theta$, and then sample a $y^i$ for each $\theta^i$. Specifically, $\{(\theta,
-\tilde{y}) \}^1, \dots, (\theta, \tilde{y})^S \}$ are samples from the joint
-posterior distribution of $\theta, \tilde{Y}$, and the sequence $\{\tilde{y}^1,
-\dots, \tilde{y}^S\}$ are samples from the *marginal* posterior distribution of
+often we can simply sample many $\theta^{(i)}$ from our posterior distribution on
+$\theta$, and then sample a $y^{(i)}$ for each $\theta^{(i)}$. Specifically, $\{(\theta,
+\tilde{y}) \}^{(1)}, \dots, (\theta, \tilde{y})^{(S)} \}$ are samples from the joint
+posterior distribution of $\theta, \tilde{Y}$, and the sequence $\{\tilde{y}^{(1)},
+\dots, \tilde{y}^{(S)}\}$ are samples from the *marginal* posterior distribution of
 $\tilde{Y}$ (if we had an infinite number of samples, we would be "summing" over all theta).
 
 # Posterior predictive model checking
@@ -412,14 +414,14 @@ exps = sapply(n0, function(n) {
 qplot(1:50, exps, geom = c('point', 'smooth'))
 ```
 
-Appears to be a roughly linear relationship. Even a strong factor of $n_0$ has a
+Even a strong factor of $n_0$ has a
 relatively minimal effect on the posterior distribution.
 
 ### c
 
 Recall for a Poisson model, the posterior predictive distribution after a
 $\text{Gamma}(a, b)$ prior is a negative binomial distribution $\text{NB}(a +
-\sum y_i, b)$. (The posterior predictive parameters are the same as those of the
+\sum y_i, b, n)$. (The posterior predictive parameters are the same as those of the
 posterior distribution itself). However, we can also simulate it by sampling
 from the Poisson distribution implied by the sampled theta.
 
@@ -600,7 +602,12 @@ print("Ynew difference:")
 print(quantile(ynew.diff, c(0.025, 0.975)))
 ```
 
-TODO: interpretation
+Since the confidence interval for $\theta_B - \theta_A$ does not contain zero, 
+we believe with at least approximately 95% probability that the true posterior 
+mean $\theta_B$ is greater than $\theta_A$. However, the same does not hold true
+for the means of the difference between two individuals sampled from this
+distribution, due to the increased uncertainty in the posterior predictive
+distribution.
 
 ### c
 

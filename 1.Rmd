@@ -226,9 +226,7 @@ df = melt(d)
 colnames(df) = c('theta0', 'w', 'theta')
 
 p = ggplot(df, aes(x = w, y = theta0, z = theta)) +
-  geom_tile(aes(fill = theta)) +
-  stat_contour(aes(colour = ..level..)) +
-  scale_fill_distiller(palette = 'YlOrRd')
+  geom_contour(aes(colour = ..level..))
 library(directlabels)
 direct.label(p, method = 'bottom.pieces')
 ```
