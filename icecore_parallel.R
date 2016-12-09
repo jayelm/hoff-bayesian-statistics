@@ -118,9 +118,9 @@ do.mh.sample = function(S, burnin) {
   OUT
 }
 
-S.global = 100
+S.global = 25000
 
-outs = mclapply(X = rep(S.global, 4), FUN = do.mh.sample, mc.cores = 4, burnin = 50)
+outs = mclapply(X = rep(S.global, 4), FUN = do.mh.sample, mc.cores = 4, burnin = 5000)
 
 outs = do.call(rbind, outs)
 
