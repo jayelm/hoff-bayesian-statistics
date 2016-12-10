@@ -41,9 +41,55 @@ $$
 \theta \mid \sigma^2 \sim \mathcal{N}(\mu_0, \sigma^2 / \kappa_0)
 $$
 
-However, consider that we may want to decouple our prior specification
+However, consider that we may want to decouple the priors of the two parameters.
+This allows flexibility with specification of the prior (initial estimate and 
+confidence) of either parameter.
+
+Consider the midge wing example: we picked a prior on $\theta$ that was centered
+around 1.9 (our prior expectation) but with most of its mass above 0, since wing
+lengths cannot be above 0. We can't freely do this from what we know in section
+5 (i.e. setting $\tau_0^2 = \sigma^2 / \kappa_0$). Alternatively, we can set
+$\tau_0^2$ to be whatever we want, but then there is no longer a known form of
+the joint posterior
+
+$$
+p(\theta, \sigma^2 \mid y_1, \dots, y_n) \propto p(\theta, \sigma^2) \times p(y_1, \dots, y_n \mid \theta, \sigma^2)
+$$
+
+that can easily be sampled from. However, as it turns out, the full conditionals
+$p(\theta \mid \sigma^2, y_1, \dots, y_n)$ and $p(\sigma^2 \mid \theta, y_1,
+\dots, y_n)$ are easy to specify, as when evaluating the formulas, we can simply
+disregard the other fixed parameter as a constant, leading to known posterior
+distributions. A technicue called Gibbs sampling allows us to take advantage of
+this by constructing a sampler that approximates the (unknown) joint
+distribution by sampling iteratively from the (known) full conditional
+distributions.
 
 # Discrete approximations
+
+Why posterior densities are hard to calculate for nonconjugate priors using 
+Bayes rule?
+
+\begin{align}
+p(\boldsymbol{\theta} \mid \mathbf{y}) &= \frac{\mathbf{y} \mid
+p(\boldsymbol{\theta})p(\boldsymbol{\theta})}{\int p(\mathbf{y} \mid
+\boldsymbol{\theta}) p(\boldsymbol{\theta}) \; d\boldsymbol{\theta}}
+\end{align}
+
+The numerator here is often easy to calculate, but the denominator is often
+prohibitively hard to compute. When the numerator is not known to be
+proportional to a known probability distribution, we can't get the full joint
+density without the denominator.
+
+Notice however that we can still evaluate relative probabilites of
+$\boldsymbol{\theta}_a$ and $\boldsymbol{\theta}_b$, as their ratio cancels out
+the integral. More generally, we can create a discrete approximation of the
+probabilities by evaluating the numerator of this density for values of
+$\boldsymbol{\theta}$ across an $n$-dimensional grid, then dividing each of 
+these unnormalized densities by the sum of the entire grid.
+
+Funnily, this is pretty much what I have been doing in the past chapters when
+plotting heatmaps:
 
 ```{r}
 y = c(1.64, 1.70, 1.72, 1.74, 1.82, 1.82, 1.82, 1.90, 2.08)
@@ -85,10 +131,62 @@ ggplot(df, aes(x = theta, y = sigma2, z = density)) +
 
 # Sampling from the conditional distributions
 
-Let $\theta$ be known. Then the conditional distribution of $\tilde{\sigma}^2$ given $\theta$ and $y_1, \dots, y_n$ is
+Again, to proceed with Gibbs sampling, we simply need to calculate the full 
+conditional distributions of the parameters. We already computed the 
+full conditional for $\theta \mid \sigma^2, y_1, \dots, y_n$ in 5.2. For $\theta
+\mid \mathcal{N}(\mu_0, \tau_0^2)$, then $\theta \mid \sigma^2, y_1, \dots, y_n
+\sim \mathcal{N}(\mu_n, \tau_n^2)$, where $\mu_n$ and $\tau_n^2$ I will not
+reproduce here (see 5.2).
 
+Now we find the full conditional for $\sigma^2$ using the exact same method as in 5.2:
+
+\begin{align}
+p(\sigma^2 \mid \theta, y_1, \dots, y_n) &\propto
+\left[(\sigma^2)^{-n/2} \text{exp}\left(-\frac{1}{2\sigma^2} \sum_{i = 1}^n (y_i - \theta)^2 \right) \right] \times \left[ (\sigma^2)^{- \nu_0 / 2 - 1} \text{exp} \left(-\frac{\sigma_0^2 \nu_0 / 2}{\sigma^2} \right) \right] \\
+&\propto (\sigma^2)^{-(\nu_0 + 1) / 2 - 1} \times \text{exp}\left(-\frac{1}{\sigma^2} \times \frac{1}{2}\left(\sigma_0^2 \nu_0 + \sum_{i=1}^{n} (y_i - \theta)^2 \right) \right) \\
+\end{align}
+
+So $\sigma^2 \sim \text{inverse-gamma}(\nu_n / 2, \nu_n \sigma_n^2(\theta) / 
+2)$, and $\tilde{\sigma^2} \sim \text{gamma}(\cdot, \cdot))$, with the
+parameters:
+
+- $\nu_n = \nu_0 + n$
+- $\sigma_n^2(\theta) = (\sigma_0^n \nu_0 + n s_n^2(\theta)) / \nu_n$
+
+We denote $\sigma_n^2(\theta)$, $s_n^2(\theta)$ to indicate that $\sigma_n^2$ is
+dependent on $\theta$ which is assumed known.
+
+> A shortcut for thinking about full conditionals, instead of explicitly
+decomposing the probability according to Bayes rule each time, is to write the
+numerator of the full joint posterior $p(\boldsymbol{\theta} \mid \mathbf{y})$.
+Then, if you are interested in the full conditional of $p(\theta_i \mid
+\mathbf{y})$, simply evaluate the full joint posterior while treating all
+$\theta_j$ for $j \neq i$ as constants (and thus discardable to maintain
+proportionality). This is used in later chapters (e.g. 8.3.1)
 
 # Gibbs sampling
+
+From this, Gibbs sampling proceeds as follows:
+
+Begin with start values $\theta_i^{(0)}$ for all $i$. Usually these can be
+standard naive estimates of the parameters. Also, you technically only have to
+have start values for *all but one* parameter, because now...
+
+- (WOLOG) Sample $\theta_1^{(1)} \sim p(\theta_1 \mid \theta_2^{(0)}, \dots,
+\theta_n^{(0)}, \dots)$ (the full conditional)
+- Similarly, sample $\theta_2^{(1)} \sim p(\theta_2 \mid \dots)$, $\theta_3^{(1)} \sim p(\theta_3 \mid \dots)$.
+- $\boldsymbol{\theta}^{(1)} = \begin{pmatrix} \theta_1^{(1)} & \cdots & \theta_n^{(1)} \end{pmatrix}$ is your first Gibbs sample.
+- Given Gibbs sample $\boldsymbol{\theta}^{(s)}$, for further samples, sample
+each $\theta_i^{(s + 1)}$ individually as before, conditioning on the
+$\theta_i^{(s)}$ of the previous gibbs sampling $\boldsymbol{\theta}^{(s)}$$
+*and* the new samples $\theta_i^{(s + 1)}$ as they are received. Then $\boldsymbol{\theta}^{(s + 1)} = \begin{pmatrix} \theta_1^{(s + 1)} & \cdots & \theta_n^{(s + 1)} \end{pmatrix}$ is the $s + 1$th Gibbs sample.
+
+Notice that the $s + 1$th sample is only conditionally dependent on the $s$th
+sample, hence the term "Markov Chain Monte Carlo".
+Once these samples are obtained, you can treat them like a standard Monte Carlo
+sample, and compute all of the desired quantities.
+
+The following is an example for our midge length data:
 
 ```{r}
 S = 1000
@@ -116,6 +214,8 @@ for (s in 2:S) {
 }
 ```
 
+The following are plots of 5, 15, and 100 consecutive Gibbs samples for $\theta$ and $\tilde{\sigma^2}$:
+
 ```{r echo=FALSE}
 phi.df = data.frame(PHI)
 colnames(phi.df) = c('theta', '1/sigma^2')
@@ -136,8 +236,15 @@ ggplot(facets, aes(x = theta, y = `1/sigma^2`)) +
   facet_wrap(~ total)
 ```
 
-```{r echo=FALSE}
+This is the scatterplot of all 1000 of our Gibbs samples:
+
+```{r}
 ggplot(phi.df, aes(x = theta, y = `1/sigma^2`)) + geom_point()
+```
+
+Finally, some quantiles:
+
+```{r}
 # CI for population mean - first column is theta
 quantile(PHI[, 1], c(0.025, 0.5, 0.975))
 # CI for population precision, second column
@@ -149,9 +256,25 @@ quantile(1 / sqrt(PHI[, 2]), c(0.025, 0.5, 0.975))
 midge.df = phi.df
 ```
 
+# General properties of the Gibbs sampler
+
+Under conditions that will be met for our models, like the law of large numbers
+for standard monte carlo sampling, a sufficient number of Gibbs samples
+approaches the target distribution. The question of course is how many samples
+is enough, which is covered in the next section.
+
+Another important point is that Gibbs sampling is not a Bayesian model. These 
+two concepts should be separated: Gibbs sampling is a general framework for 
+"observing" the posterior probability distribution, whatever that distribution
+is.
+
 # Introduction to MCMC diagnostics
 
-```{r}
+For an example of the importance of assessing convergence of Gibbs sampling,
+consider the following target distribution, a 45-10-45 mixture of
+$\mathcal{N}(-3, 1/3), \mathcal{N}(0, 1/3), \mathcal{N}(3, 1/3)$:
+
+```{r echo=FALSE}
 # Params
 PROB.DENS = c(0.45, 0.10, 0.45)
 MU.DENS = c(-3, 0, 3)
@@ -183,9 +306,11 @@ ggplot(theta.dist, aes(x = theta, y = density)) +
   geom_line()
 ```
 
+A Gibbs sampler to obtain samples from this is:
+
 ```{r}
 # Gibbs sampling with S = 1000
-S = 100000
+S = 1000
 PHI = matrix(nrow = S, ncol = 2)
 # Let delta0 = 2 and theta0 = 0
 PHI[1, ] = phi = c(2, 0)
@@ -222,27 +347,61 @@ ggplot(theta.mcmc, aes(x = iteration, y = theta)) +
   geom_line(alpha = 0.25)
 ```
 
-Try changing code to 10000 and see if it's any better
+Notice that the histogram does not adequately approximate the distribution. Try
+changing the number of samples to 10000 or 100000, which should be better.
+
+The problem is that since the sampler generates dependent samples, the sampler 
+sticks in high probability regions for a long time. After sufficient samples, 
+this balances out, but sometimes the number of samples required may be very 
+large.
 
 ### Getting it right
 
-Estimate of MCMC depends on autocorrelation. Each bar represents the
-autocorrelation for varying levels of lag
+Estimate of MCMC depends on autocorrelation: how correlated a chain of values is
+with itself. We prefer low correlation values. The `acf` function can be used to assess this: each bar represents the autocorrelation for varying levels of lag, where "lag" is the gap in subsequent samples.
 
 ```{r}
 acf(theta.mcmc$theta, lag.max = 50)
 ```
 
-Measure effective sample size
+Another thing we can do is obtain the "effective sample size" of the MCMC
+sample. This exploits the fact that with $n$ samples of a value $\theta$ the following
+
+\begin{align}
+\text{Var}_{\text{MCMC}}(\bar{\theta}) = \frac{\text{Var}(\theta)}{n}
+\end{align}
+
+only holds if the autocorrelation of the samples is zero. If there is positive
+autocorrelation in the samples, the variance of the sample mean increases, which
+"reduces" $n$. So by obtaining estimates of the variance of the population (by
+estimating the variance of the sample) and estimates of the variance of the
+mean, we can solve for $n$ which is an "effective sample size".
+
+Estimating the variance of the mean, given that we cannot assume an independent
+sample, is nontrivial, and requires calculating the [spectral density estimate
+at frequency zero](http://faculty.arts.ubc.ca/vmarmer/econ627/627_10_02.pdf)
+which is "a convenient way to represent the sequence of autocovariances" of a
+stochastic process, and is related to 1) autocorrelation, and 2) Fourier transformation.
+
+This is implemented as the `effectiveSize` function in R, which abridged looks
+like this:
 
 ```{r}
 library(coda)
+myEffectiveSize = function(x) {
+    spec = spectrum0.ar(x)$spec
+    ifelse(spec == 0, 0, length(x) * var(x)/spec)
+}
+```
+
+```{r}
 effectiveSize(theta.mcmc$theta)
+myEffectiveSize(theta.mcmc$theta)
 ```
 
 ### MCMC diagnostics for semiconjugate normal analysis
 
-Back to midge length...
+Back to midge length. Here are the traceplots for our samples of theta and sigma^2:
 
 ```{r}
 midge.df$iteration = midge.df$n
@@ -252,6 +411,9 @@ ggplot(midge.df, aes(x = iteration, y = `1/sigma^2`)) +
   geom_point() + geom_line(alpha = 0.25)
 ```
 
+By viewing the autocorrelation function and effective sample sizes of our data, 
+we can see that the samples look quite good and seem to have reasonable effective sample sizes.
+
 ```{r}
 acf(midge.df$theta)
 effectiveSize(midge.df$theta)
@@ -259,4 +421,34 @@ acf(midge.df$`1/sigma^2`)
 effectiveSize(midge.df$`1/sigma^2`)
 ```
 
-TODO: Calculate effective sample size according to Gelman
+# Exercises
+
+## 6.1
+
+### a
+
+$\theta_A$ and $\theta_B$ are dependent, since $p(\theta_B \mid \theta_A = 10) =
+10\gamma) \neq 5\gamma = p(\theta_B \mid \theta_A = 5)$. This prior is justified
+if we have reason to believe that $\theta_B$ is some product of $\theta_A$ plus
+random Gamma-distributed noise.
+
+### b
+
+First the full conditional
+
+\begin{align}
+p(\theta, \gamma \mid \mathbf{y}_A, \mathbf{y}_B)
+&\propto p(\theta, \gamma) \times p(\mathbf{y}_A, \mathbf{y}_B \mid \theta, \gamma) \\
+&\propto p(\theta) \times p(\gamma) \times p(\mathbf{y}_A \mid \theta) \times p(\mathbf{y}_B \mid \theta, \gamma) & \text{$\mathbf{y}_A \perp \gamma$} \\
+&\propto \left(\theta^{a_\theta - 1}e^{-b_\theta \theta}\right) \times \left(\gamma^{a_\gamma - 1}e^{-b_\gamma \gamma} \right) \times  \left(\prod_{i=1}^{n_{A}} \theta^{y_{A_i}} e^{-\theta} \right) \times \left(\prod_{i=1}^{n_{B}} \left( \text{Product of two Gammas??} \right) \right) \\
+\end{align}
+
+
+```{r}
+hist(rgamma(5000, 2, 3) * rgamma(5000, 4, 5))
+df = data.frame(
+  gamma = seq(0, 6, length = 500),
+  density = dgamma(seq(0, 6, length = 500), 2 * 4, 3 * 5)
+)
+qplot(x = df$gamma, y = df$density, geom = 'line')
+```
