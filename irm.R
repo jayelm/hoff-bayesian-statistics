@@ -32,7 +32,7 @@ p.z = function(z, prior.gamma) {
   # Likelihood of this z being drawn from a CRP given GAMMA.
   # TODO: Sorting is probably really slow...
   z = sort(z)
-  
+
   ll = 0
   # Keeping track of members already part of the clusters.
   # Requires that we know how many unique clusters there are
@@ -111,19 +111,21 @@ j = function(z.i, i, obs, prior.gamma) {
   log(probs[z.i])
 }
 
-# Simple 2-dimensional IRM.
+# Simple 2-dimensional IRM. For each assignment "sample", I sweep through the
+# cluster assignments of each individual point, and use a metropolis-hastings
+# update.
 irm = function(R, sweeps = 1000, prior.beta = 1, prior.gamma = 1) {
 
   Z = matrix(NA, nrow = sweeps, ncol = nrow(R))
 
   z = 1:nrow(R)
   n = length(z)
-  
+
   # Sweeps.
   for (s in 1:sweeps) {
     for (i in 1:n) {
       # Propose changing this value by sampling from the existing CRP.
-      # Specifically, since this is exchangeable, we imagine that z.i is the last 
+      # Specifically, since this is exchangeable, we imagine that z.i is the last
       # value to be sampled, and we sample from the probabilities.
       z.i = z[i]
       # Setup new vector. ith value to be filled in
@@ -131,24 +133,24 @@ irm = function(R, sweeps = 1000, prior.beta = 1, prior.gamma = 1) {
       z.star[i] = NA
       # Renumber (leaves NAs alone)
       z.star = renumber(z.star)
-      
+
       # Get vector without the ith value and sample a new z.i
       z.i.star = samp.z(z.star[-i], prior.gamma)
       z.star[i] = z.i.star
-      
+
       # Now compare likelihoods of 1) original z, and 2) new z.samp
       # Initial likelihood of original z and new z.samp
       log.ll = (p.R.z(R, z.star, prior.beta) +
                   p.z(z.star, prior.gamma)) -
         (p.R.z(R, z, prior.beta) + p.z(z, prior.gamma))
       # Next, relative likelihood of proposal distribution
-      # likelihood of sampling z.i given z.i.star vs likelihood of sampling 
+      # likelihood of sampling z.i given z.i.star vs likelihood of sampling
       # z.i.star given z.i
       log.prop = j(z.i, i, z.star, prior.gamma) - j(z.i.star, i, z, prior.gamma)
-      
+
       # Final acceptance ratio
       log.r = log.ll + log.prop
-      
+
       if (log(runif(1)) < log.r) {
         z = renumber(z.star)
       }
@@ -156,7 +158,7 @@ irm = function(R, sweeps = 1000, prior.beta = 1, prior.gamma = 1) {
     # We ignore storing results of sweeps
     Z[s, ] = z
   }
-  
+
   Z
 }
 
@@ -166,7 +168,7 @@ top.n = function(Z, n = 10) {
   for (i in 1:nrow(Z)) {
     Z.str[i] = paste(Z[i, ], collapse = "")
   }
-  
+
   Z.counts = table(Z.str)
   # Only keep top 10 counts
   Z.top = head(sort(Z.counts, decreasing = TRUE), n = n)
