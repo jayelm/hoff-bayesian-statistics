@@ -1,0 +1,63 @@
+---
+title: "Final Lecture: Infinite Relational Model"
+author: "Jesse Mu"
+date: "November 2, 2016"
+output:
+  html_document:
+    highlight: pygments
+    toc: yes
+    toc_float: yes
+---
+
+<!-- Setup -->
+
+<script type="text/x-mathjax-config">
+MathJax.Hub.Config({
+  TeX: { 
+      equationNumbers: {
+            autoNumber: "all"
+      } 
+  }
+});
+</script>
+
+```{r echo=FALSE, message=FALSE}
+knitr::opts_chunk$set(fig.align = 'center', message = FALSE)
+library(knitr)
+library(ggplot2)
+library(cowplot)
+library(reshape)
+```
+
+<!-- Begin writing -->
+
+# The Infinite Relational Modell
+
+For this last project, I coded up a simple version of Charles Kemp's Infinite Relational Model (IRM) in R. Code is in `irm.R`.
+
+```{r}
+source('irm.R')
+```
+
+As a sanity check, we use the toy matrix in the original paper:
+
+```{r}
+R = rbind(
+  c(0, 0, 1, 0, 1, 0, 0, 1, 0),
+  c(0, 0, 0, 0, 0, 0, 1, 0, 1),
+  c(0, 0, 1, 0, 0, 0, 1, 0, 1),
+  c(0, 1, 1, 0, 0, 0, 0, 1, 1),
+  c(0, 0, 0, 0, 0, 0, 1, 0, 1),
+  c(0, 1, 1, 0, 1, 0, 0, 1, 0),
+  c(1, 0, 0, 0, 0, 1, 0, 0, 0),
+  c(0, 0, 0, 0, 0, 1, 1, 0, 1),
+  c(1, 0, 0, 1, 0, 1, 0, 0, 0)
+)
+plot.R(R)
+```
+
+```{r}
+Z = irm(R, sweeps = 1000)
+top.n(Z)
+plot.R(R, mode.irm(Z))
+```
