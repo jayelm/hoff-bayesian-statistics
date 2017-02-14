@@ -71,9 +71,9 @@ Why posterior densities are hard to calculate for nonconjugate priors using
 Bayes rule?
 
 \begin{align}
-p(\boldsymbol{\theta} \mid \mathbf{y}) &= \frac{\mathbf{y} \mid
-p(\boldsymbol{\theta})p(\boldsymbol{\theta})}{\int p(\mathbf{y} \mid
-\boldsymbol{\theta}) p(\boldsymbol{\theta}) \; d\boldsymbol{\theta}}
+p(\boldsymbol{\theta} \mid \mathbf{y}) &= \frac{p(\mathbf{y} \mid
+\theta) p(\boldsymbol{\theta})}{\int p(\mathbf{y} \mid
+\boldsymbol{\theta}') p(\boldsymbol{\theta}') \; d\boldsymbol{\theta}'}
 \end{align}
 
 The numerator here is often easy to calculate, but the denominator is often
@@ -103,7 +103,7 @@ s2 = var(y)
 mu0 = 1.9
 # Tau chosen such that most of the mass of the normal distribution > 0
 t20 = 0.95^2
-s20 = 0.1
+s20 = 0.01
 nu0 = 1
 
 Theta = seq(1.505, 2, length = 100)
@@ -452,3 +452,5 @@ df = data.frame(
 )
 qplot(x = df$gamma, y = df$density, geom = 'line')
 ```
+
+## 6.2

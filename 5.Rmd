@@ -115,7 +115,7 @@ p(\theta \mid \sigma^2, y_1, \dots, y_n) &\propto \text{exp}\left[ -\frac{1}{2} 
 &\propto \text{exp}\left[ -\frac{1}{2}(a\theta^2 - 2b\theta + b^2/a) \right] &\text{Throw away constants} \\
 &\propto \text{exp}\left[ -\frac{1}{2}a(\theta^2 - 2b\theta / a + b^2/a^2) \right] \\
 &\propto \text{exp}\left[ -\frac{1}{2}a(\theta - b/a)^2 \right] \\
-&\propto \text{exp}\left[ -\frac{1}{2}\left( \frac{\theta - b/a}{1 - \sqrt{a}} \right)^2 \right] \\
+&\propto \text{exp}\left[ -\frac{1}{2}\left( \frac{\theta - b/a}{1 / \sqrt{a}} \right)^2 \right] \\
 &= \text{dnorm}(\theta, b/a, 1/a).
 \end{align}
 
@@ -187,12 +187,12 @@ integration, we can use a trick.
 
 $\tilde{Y}$ is normally distributed with mean $\theta$ and variance $\sigma^2$. This is equivalent to saying
 
-$$\bar{Y} = \theta + \tilde{\epsilon}$$
+$$\tilde{Y} = \theta + \tilde{\epsilon}$$
 
 where $\theta \sim \mathcal{N}(\mu_n, \tau_n^2$, $\tilde{\epsilon} \sim
 \mathcal{N}(0, \sigma^2)$. So adding these normal distributions together gives
 
-$$\bar{Y} \mid \sigma^2, y_1, \dots, y_n \sim \mathcal{N}(\mu_n, \tau_n^2 + \sigma^2)$$
+$$\tilde{Y} \mid \sigma^2, y_1, \dots, y_n \sim \mathcal{N}(\mu_n, \tau_n^2 + \sigma^2)$$
 
 ## Example: Midge wing data
 
@@ -320,7 +320,7 @@ $$
 This is convenient because we already know $p(\theta \mid \sigma^2, y_1, \dots, y_n)$ from the one-parameter case:
 
 \begin{align}
-\theta \mid sigma^2, y_1, \dots y_n \sim \mathcal{N}(\mu_n, \tau_n^2)
+\theta \mid \sigma^2, y_1, \dots y_n \sim \mathcal{N}(\mu_n, \tau_n^2)
 \end{align}
 
 where
@@ -659,8 +659,8 @@ Given the exponential family parameters
 You can reconstruct the normal density:
 
 \begin{align}
-p(y \mid \boldsymbol{\phi}) &= \frac{1}{\sqrt{\pi}} | \phi_2 |^{1/2} \text{exp}\left( \frac{\phi_1^2}{2\phi_2} \right) \text{exp} \left( \begin{pmatrix} \theta/\sigma^2 \\ -(2\sigma^2)^{-1} \end{pmatrix} \begin{pmatrix} y & y^2 \end{pmatrix} \right) \\
-&= \frac{1}{\sqrt{\pi}} (2\sigma^2)^{-1/2} \text{exp}\left( \frac{(\theta / \sigma^2)^2}{-2(2\sigma^2)^{-1}} \right) \text{exp} \left( \begin{pmatrix} \theta/\sigma^2 \\ -(2\sigma^2)^{-1} \end{pmatrix} \begin{pmatrix} y & y^2 \end{pmatrix} \right) \\
+p(y \mid \boldsymbol{\phi}) &= \frac{1}{\sqrt{\pi}} | \phi_2 |^{1/2} \text{exp}\left( \frac{\phi_1^2}{2\phi_2} \right) \text{exp} \left(\begin{pmatrix} y & y^2 \end{pmatrix}  \begin{pmatrix} \theta/\sigma^2 \\ -(2\sigma^2)^{-1} \end{pmatrix}  \right) \\
+&= \frac{1}{\sqrt{\pi}} (2\sigma^2)^{-1/2} \text{exp}\left( \frac{(\theta / \sigma^2)^2}{-2(2\sigma^2)^{-1}} \right) \text{exp} \left(\begin{pmatrix} y & y^2 \end{pmatrix}  \begin{pmatrix} \theta/\sigma^2 \\ -(2\sigma^2)^{-1} \end{pmatrix} \right) \\
 \end{align}
 
 I am not going to do the exact algebra here, but notice that once you combine
@@ -799,7 +799,7 @@ s2.a = 7.3^2
 ybar.b = 77.5
 s2.b = 8.1^2
 
-k0nu0 = c(1, 2, 4, 8, 16, 32, 100)
+k0nu0 = c(1, 2, 4, 8, 16, 32)
 
 prob = sapply(k0nu0, function(p) {
   # p is the common parameter for k0 and nu0
@@ -847,8 +847,11 @@ p(\sigma^2 \mid y_1, \dots, y_n) &\propto p(\sigma^2)p(y_1, \dots, y_n \mid \sig
 \text{exp}\left(-\frac{1}{2} \frac{(\theta - \mu_0)^2}{\sigma^2 / \kappa_0}\right) \; d\theta \\
 &\propto \text{dinvgamma}(\sigma^2, \nu_0 / 2, \nu_0 \sigma_0^2 / 2) \; \times \\ &\quad \sigma^{2(-(n + 1)/2)} \int \text{exp}\left( -\frac{1}{2} \sum \frac{(y_i -
 \theta)^2}{\sigma^2} \right) \times 
-\text{exp}\left(-\frac{1}{2} \frac{(\theta - \mu_0)^2}{\sigma^2 / \kappa_0}\right) \; d\theta
+\text{exp}\left(-\frac{1}{2} \frac{(\theta - \mu_0)^2}{\sigma^2 / \kappa_0}\right) \; d\theta \\
+&\propto \dots
 \end{align}
+
+This is apparently non-trivial, and requires expanding the quadratic terms in the $\text{exp}$ terms. I'll skip this for now.
 
 <!--
 The marginal posterior distribution on $\theta^2$ can be calculated using Bayes'
@@ -940,10 +943,11 @@ p_J(\theta, \sigma^2 \mid \mathbf{y}) &\propto p_J(\theta, \sigma^2) p(\mathbf{y
 Yes, since there is some normalizing constant that results in the integral over
 $p_J$ being equal to 1.
 
+After some poking around, this is a [normal-inverse-chi-squared 
+distribution](https://www2.stat.duke.edu/courses/Fall10/sta114/notes15.pdf).
+
 <!--
-Yes, but because I know, after some poking around, this is a
-[normal-inverse-chi-squared 
-function](https://www2.stat.duke.edu/courses/Fall10/sta114/notes15.pdf). For random variables $W, V$, the density function is
+For random variables $W, V$, the density function is
 
 \begin{align}
 f(w, v; m, k, r, s) &\propto v^{-(r + 3)/2} \text{exp}\left(-\frac{k(w-m)^2 +
