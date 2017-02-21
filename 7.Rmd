@@ -1,0 +1,785 @@
+---
+title: "Chapter 7: The multivariate normal model"
+author: "Jesse Mu"
+date: "November 10, 2016"
+output:
+  html_document:
+    highlight: pygments
+    toc: yes
+    toc_float: yes
+---
+
+<!-- Setup -->
+
+<script type="text/x-mathjax-config">
+MathJax.Hub.Config({
+  TeX: { 
+      equationNumbers: {
+            autoNumber: "all"
+      } 
+  }
+});
+</script>
+
+```{r echo=FALSE, message=FALSE}
+knitr::opts_chunk$set(fig.align = 'center', message = FALSE)
+library(knitr)
+library(ggplot2)
+library(cowplot)
+library(reshape)
+```
+
+<!-- Begin writing -->
+
+# The multivariate normal density
+
+## Example: reading comprehension
+
+We make the step to two variables by example. Consider a sample ($n = 22$) of
+children who are given reading comprehension tests before and after receiving a
+particular instructional method. So each student has a before and after test
+score. We can denote these *two* variables for student $i$ as a vector
+$\mathbf{Y}_i$, where $Y_{i, 1}$ is the before score, and $Y_{i, 2}$ is the
+after score:
+
+\begin{align}
+\mathbf{Y}_i = \begin{pmatrix}
+Y_{i, 1} \\
+Y_{i, 2} \\
+\end{pmatrix}
+\end{align}
+
+Recall 
+\begin{align}
+\text{Cor}(X, Y) &= \frac{\text{Cov}(X, Y)}{\text{SD}(X)\text{SD}(Y)} \\
+&= \frac{\sigma_{1, 2}}{\sigma_1 \sigma_2} \\
+&= \frac{\sigma_{1, 2}}{\sqrt{\sigma_1^2 \sigma_2^2}}
+\end{align}
+
+## Multivariate normal density
+
+If
+\begin{align}
+\mathbf{y} &= \begin{pmatrix}
+y_1 \\
+y_2 \\
+\vdots \\
+y_p
+\end{pmatrix} \sim \mathcal{N}(\boldsymbol{\theta}, \Sigma)
+\end{align}
+
+where
+
+\begin{align}
+\boldsymbol{\theta} &= \begin{pmatrix}
+\theta_1 \\
+\theta_2 \\
+\vdots \\
+\theta_p
+\end{pmatrix}
+\end{align}
+
+and
+
+\begin{align}
+\Sigma &= \begin{pmatrix}
+\sigma_1^2 & \sigma_{1, 2} & \cdots & \sigma_{1, p} \\
+\sigma_{1, 2} & \sigma_2^2 & \cdots & \sigma_{2, p} \\
+\vdots & \vdots & & \vdots \\
+\sigma_{1, p} & \cdots & \cdots & \sigma_p^2
+\end{pmatrix}
+\end{align}
+
+then
+
+\begin{align}
+p(\mathbf{y} \mid \boldsymbol{\theta}, \Sigma) = (2\pi)^{-p / 2} | \Sigma |^{-1/2} \text{exp}\left( \frac{1}{2} -(\mathbf{y} - \boldsymbol{\theta})^T \Sigma^{-1} (\mathbf{y} - \boldsymbol{\theta}) \right)
+\end{align}
+
+It's useful to compare this to the single variable case. The first two terms 
+represent $1/\sqrt{2\pi\sigma^2}$ in the univariate case, generalized to an
+arbitrary dimension: there is no longer the square root of the variance for a
+single variable, but rather a $p$-dimensional covariance matrix raised to the
+$1/2$ power. Furthermore, the quadratic term in the exponential $(y -
+\theta)^2$ can be seen in the exponential here, but also included is the matrix
+multiplication with the inverse of the covariance matrix.
+
+```{r echo=FALSE}
+# Multivariate normal
+# Takes MATRICES of EXACTLY the same format as those in the book
+# So Theta must be a COLUMN vector (1d matrix), etc
+# SOLVE is INV in R
+dmnorm = function(y, Theta, Sigma) {
+  y = as.matrix(y)
+  Theta = as.matrix(Theta)
+  Sigma = as.matrix(Sigma)
+  p = nrow(Theta)
+  (2 * pi)^(-p / 2) * det(Sigma)^(-1 / 2) *
+    exp(-t(y - Theta) %*% solve(Sigma) %*% (y - Theta) / 2)
+}
+
+y1 = seq(20, 80, length = 100)
+y2 = seq(20, 80, length = 100)
+
+dfs = lapply(c(-48, 0, 48), function(cov) {
+  Theta = c(50, 50)
+  Sigma = rbind(c(64, cov), c(cov, 144))
+  
+  calc.density = Vectorize(function(y1, y2) {
+    y = c(y1, y2)
+    dmnorm(y, Theta, Sigma)
+  })
+  
+  d = outer(y1, y2, FUN = calc.density)
+  
+  rownames(d) = y1
+  colnames(d) = y2
+  
+  df = melt(d)
+  colnames(df) = c('y1', 'y2', 'density')
+  
+  df$cov = as.character(cov)
+  
+  df
+})
+
+df = rbind(dfs[[1]], dfs[[2]], dfs[[3]])
+
+ggplot(df, aes(x = y1, y = y2, z = density)) +
+  geom_contour(aes(color = ..level..)) +
+  facet_wrap(~ cov, scales = 'fixed') +
+  scale_x_continuous(limits = c(20, 80)) +
+  scale_y_continuous(limits = c(20, 80)) +
+  guides(color = FALSE)
+```
+
+# A semiconjugate prior distribution for the mean
+
+At this point we have given up on computing a full closed form solution for
+the posterior, as it's too complicated. Rather, if we compute conjugate priors
+and posteriors for the full conditional distributions of the
+$\boldsymbol{\theta}$ and $\Sigma$ separately, we can use Gibbs sampling to easily estimate the joint posterior distribution. Let's start by calculating $\boldsymbol{\theta}$ first:
+
+Analogous the univariate case, for the multivariate normal distribution, a conjugate
+prior for the population mean is a multivariate normal.
+
+Let $\boldsymbol{\mu}_0$ be the prior mean, and $\Lambda_0$ be the covariance matrix of
+$\boldsymbol{\mu}_0$. Then let $\boldsymbol{\theta} \sim \mathcal{N}(\boldsymbol{\mu}_0, \Lambda_0)$. What does this prior look like?
+
+\begin{align}
+p(\boldsymbol{\theta} \mid \Sigma) &\propto \text{exp}\left[ -\frac{1}{2} (\boldsymbol{\theta} - \boldsymbol{\mu}_0)^T \Lambda_0^{-1} (\boldsymbol{\theta} - \boldsymbol{\mu}_0) \right] & \text{Drop constants} \\
+&= \text{exp}\left[-\frac{1}{2} (\boldsymbol{\theta}^T - \boldsymbol{\mu}_0^T) (\Lambda_0^{-1}\boldsymbol{\theta} - \Lambda_0^{-1}\boldsymbol{\mu}_0 ) \right] \\
+&= \text{exp}\left[-\frac{1}{2} (\boldsymbol{\theta}^T \Lambda_0^{-1} \boldsymbol{\theta} - \boldsymbol{\mu}_0^T \Lambda_0^{-1} \boldsymbol{\theta} - \boldsymbol{\theta}^T \Lambda_0^{-1} \boldsymbol{\mu}_0 + \boldsymbol{\mu}_0^T \Lambda_0^{-1}\boldsymbol{\mu}_0  )\right] \\
+&= \text{exp} \left[ -\frac{1}{2} (\boldsymbol{\theta}^T \Lambda_0^{-1} \boldsymbol{\theta} - 2\boldsymbol{\theta}^T \Lambda_0^{-1} \boldsymbol{\mu}_0 + \boldsymbol{\mu}_0^T \Lambda_0^{-1}\boldsymbol{\mu}_0 ) \right] & \text{Middle terms combine} \\
+&\propto \text{exp} \left[ -\frac{1}{2}\boldsymbol{\theta}^T \Lambda_0^{-1} \boldsymbol{\theta} + \boldsymbol{\theta}^T \Lambda_0^{-1} \boldsymbol{\mu}_0 \right] & \text{Discard last term} \\
+
+\end{align}
+
+If we let $\mathbf{A}_0 = \Lambda_0^{-1}$, i.e. the precision matrix (which
+echoes the univariate case) and $\mathbf{b}_0 = \Lambda_0^{-1}
+\boldsymbol{\mu}_0$, this simplifies to
+
+\begin{align}
+p(\boldsymbol{\theta}) &= \text{exp}\left( -\frac{1}{2}\boldsymbol{\theta}^T
+\mathbf{A}_0 \boldsymbol{\theta} + \boldsymbol{\theta}^T \mathbf{b}_0 \right) \\
+\end{align}
+
+We will see this simplified form show up when working with the sampling models
+and posterior distribution as well.
+
+Let's first look at the sampling model. Doing similar simplifications, we get
+
+\begin{align}
+p(\mathbf{y}_1, \dots, \mathbf{y}_n \mid \boldsymbol{\theta}, \Sigma) \propto
+\text{exp}(-\frac{1}{2}\boldsymbol{\theta}^T \mathbf{A}_1 \boldsymbol{\theta} +
+\boldsymbol{\theta}^T \mathbf{b}_1)
+\end{align}
+
+where this time $\mathbf{A}_1 = n\Sigma^{-1}$ and $\mathbf{b}_1 = n
+\Sigma^{-1}\bar{\mathbf{y}}$. $\bar{\mathbf{y}}$ is the vector of sample
+averages for each variable.
+
+So finally, we can calculate the posterior for $\boldsymbol{\theta}$:
+
+\begin{align}
+p(\boldsymbol{\theta} \mid \mathbf{y}_1, \dots, \mathbf{y}_n, \Sigma) &=
+p(\boldsymbol{\theta} \mid \Sigma) p(\mathbf{y}_1, \dots, \mathbf{y}_n \mid
+\boldsymbol{\theta}, \Sigma) / p(\mathbf{y}_1, \dots, \mathbf{y}_n \mid \Sigma)
+\\
+&\propto p(\boldsymbol{\theta} \mid \Sigma) p(\mathbf{y}_1, \dots, \mathbf{y}_n \mid
+\boldsymbol{\theta}, \Sigma) \\
+&\propto
+\text{exp}\left( -\frac{1}{2}\boldsymbol{\theta}^T
+\mathbf{A}_0 \boldsymbol{\theta} + \boldsymbol{\theta}^T \mathbf{b}_0 \right) 
+\times \text{exp}(-\frac{1}{2}\boldsymbol{\theta}^T \mathbf{A}_1 \boldsymbol{\theta} +
+\boldsymbol{\theta}^T \mathbf{b}_1) \\
+&= \text{exp}\left(-\frac{1}{2} \boldsymbol{\theta}^T \mathbf{A}_n \boldsymbol{\theta} + \boldsymbol{\theta}^T \mathbf{b}_n \right)
+\end{align}
+
+where we have combined terms such that $\mathbf{A}_n = \mathbf{A}_0 + \mathbf{A}_1 = \Lambda_0^{-1} + n\Sigma^{-1}$ and $\mathbf{b}_n = \mathbf{b}_0 + \mathbf{b}_1 = \Lambda_0^{-1} \boldsymbol{\mu}_0 + n\Sigma^{-1} \bar{\mathbf{y}}$.
+
+So if $\boldsymbol{\theta} \mid \Sigma \sim \mathcal{N}(\boldsymbol{\mu}_0,
+\Lambda_0)$, then $\boldsymbol{\theta} \mid \mathbf{y}_1, \dots, \mathbf{y}_n, \Sigma
+\sim \mathcal{N}(\boldsymbol{\mu}_n, \Lambda_n)$ where the parameters are
+defined as above.
+
+Then notice that, like the univariate case:
+
+- $\text{Cov}(\boldsymbol{\theta} \mid \mathbf{y}_1, \dots, \mathbf{y}_n,
+\Sigma) = \Lambda_n = (A_0^{-1} + n\Sigma^{-1})^{-1}$, a combination of prior and
+posterior precision, and
+- $\mathbb{E}(\boldsymbol{\theta} \mid \mathbf{y}_1, \dots, \mathbf{y}_n,
+\Sigma) = \boldsymbol{\mu}_n = (A_0^{-1} + n\Sigma^{-1})^{-1} (\Lambda_0^{-1} \boldsymbol{\mu}_0 + n\Sigma^{-1}\bar{\boldsymbol{y}})$, weighted average of the prior estimate of the mean and the sample mean.
+
+# The inverse-Wishart distribution
+
+We've seen the (semi)conjugate prior and posterior distribution for the mean.
+Now to the covariance matrix $\Sigma$. Remember that for the univariate normal
+distribution, a semi-conjugate prior distribution for the variance was the 
+inverse-Gamma distribution. Similarly, for the multivariate case, a 
+semi-conjugate prior distribution for the covariance matrix is the inverse of 
+the multivariate analog of the Gamma distribution, known as a Wishart 
+distribution.
+
+Generating samples from a Wishart distribution is analogous to sampling a set of
+variables from a multivariate normal distribution and calculating the empirical
+covriance matrix of the samples. More specifically, with parameters $\nu_0 \in
+\mathbb{Z}^+$ and $\Phi_0$ (a $p \times p$ covariance matrix),
+
+1. Sample $z_1, \dots, z_{\nu_0} \sim \mathcal{N}(\boldsymbol{0}, \Phi_0)$
+2. Calculate $\boldsymbol{Z}^T \boldsymbol{Z} = \sum_{i = 1}^{\nu_0} z_i z_i^T$
+
+Then $\boldsymbol{Z}_1^T \boldsymbol{Z}_1, \dots, \boldsymbol{Z}_S^T \boldsymbol{Z} \sim \text{Wishart}(\nu_0, \Phi_0)$.
+
+Some properties of samples from the Wishart which happen to stem from calculating empirical covariance matrices in the first place
+
+- If $\nu_0 > p$ then $\boldsymbol{Z}^\boldsymbol{Z}$ is positive definite
+- $\boldsymbol{Z}^\boldsymbol{Z}$ is symmetric
+- $\mathbb{E}(\boldsymbol{Z}^T\boldsymbol{Z}) = \nu_0 \Phi_0$
+
+Like how the Gamma is not the conjugate prior of the variance for the Normal,
+the Wishart is not the conjugate prior of the variance for the multivariate
+Normal; rather, the inverse-Wishart is. Sampling from an inverse-Wishart just involves taking $\Sigma^{(s)} = (\boldsymbol{Z}^{(s)T} \boldsymbol{Z}^{(s)})^{-1}$
+
+If we're sampling from an inverse-Wishart we rename $\Phi_0$ to $\mathbf{S}_0^{-1}$ such that
+
+- $\mathbb{E}(\Sigma^{-1}) = \nu_0 \mathbf{S}_0^{-1}$ (instead of $\Phi_0$)
+- $\mathbb{E}(\Sigma) = \frac{1}{\nu_0 - p - 1} \mathbf{S}_0$ (so not exactly the inverse of $\mathbf{S}_0^{-1}$)
+
+## Specifying parameters
+
+Specifying parameters is somewhat interesting for the inverse-Wishart becase
+there are many of them - we need to specify the entire covariance matrix. If we
+have a prior expectation of a covariance matrix $\Sigma_0$, then we can center
+our prior around it in two suggested ways:
+
+- Set $\nu_0$ large and set $\mathbf{S}_0 = (\nu_0 - p - 1) \Sigma_0$, such that
+$\mathbb{E}(\Sigma) = \frac{\nu_0 - p - 1}{\nu_0 - p - 1}\Sigma_0 = \Sigma_0$
+and (due to large $\nu_0$) the prior is fairly concentrated around $\Sigma_0$;
+- Set $\nu_0 = p + 2$ and let $\mathbf{S}_0 = \Sigma_0$, such that
+$\mathbb{E}(\Sigma) = \frac{1}{p + 2 - p - 1}\Sigma_0 = \Sigma_0$ but only
+loosely centered around $\Sigma_0$ (due to fairly small $\nu_0$)
+
+For an "empirical Bayes" approach,  we can center our prior around the empirical
+covariance matrix of our sample.
+
+## Full conditional distribution of $\Sigma \mid \boldsymbol{y}_1, \dots, \boldsymbol{y}_n, \boldsymbol{\theta}$
+
+There is an intimidating normalizing constant for the inverse-Wishart. All we need to know is if $\Sigma \sim \text{inverse-Wishart}(\nu_0, \mathbf{S}_0^{-1})$,
+
+\begin{align}
+p(\Sigma) \propto | \Sigma |^{-(\nu_0 + p + 1) / 2} \times \exp\left(-\text{tr}(\mathbf{S}_0 \Sigma^{-1})  / 2\right)
+\end{align}
+
+Recall the sampling model from earlier. We skipped some simplifications above
+(substituting $\mathbf{A}_1$ and $\boldsymbol{b}_1$) so take it for granted that
+a less-simplified form is
+
+\begin{align}
+p(\mathbf{y}_1, \dots, \mathbf{y}_n \mid \boldsymbol{\theta}, \Sigma) &= (2\pi)^{-np/2} | \Sigma |^{-n/2} \exp \left( - \sum_{i = 1}^n (\boldsymbol{y}_i - \boldsymbol{\theta})^T \Sigma^{-1} (\boldsymbol{y}_i - \boldsymbol{\theta}) / 2 \right)
+\end{align}
+
+Using some linear algebra,
+
+\begin{align}
+\sum_{i = 1}^n (\boldsymbol{y}_i - \boldsymbol{\theta})^T \Sigma^{-1} (\boldsymbol{y}_i - \boldsymbol{\theta}) &= \text{tr}\left( \left(\sum_{i = 1}^n (\boldsymbol{y}_i - \boldsymbol{\theta}) (\boldsymbol{y}_i - \boldsymbol{\theta})^T \right) \Sigma^{-1} \right)
+\text{tr}\left( \mathbf{S}_{\theta} \Sigma^{-1} \right)
+\end{align}
+
+where $\mathbf{S}_{\theta} = \sum_{i = 1}^n (\boldsymbol{y}_i -
+\boldsymbol{\theta}) (\boldsymbol{y}_i - \boldsymbol{\theta})^T$ is the
+*residual sum of squares matrix* for the vectors $\boldsymbol{y}_1, \dots,
+\boldsymbol{y}_n$. (To obtain the residual sum of squares matrix, you calculate
+the sum of squares for the residual vectors $\boldsymbol{y}_i -
+\boldsymbol{\theta}$)
+
+So
+
+\begin{align}
+p(\mathbf{y}_1, \dots, \mathbf{y}_n \mid \boldsymbol{\theta}, \Sigma) &= (2\pi)^{-np/2} | \Sigma |^{-n/2} \exp \left( - \text{tr}(\mathbf{S}_{\theta} \Sigma^{-1})  / 2 \right)
+\end{align}
+
+Now we can calculate the full conditional distribution of $\Sigma$:
+
+\begin{align}
+p(\Sigma \mid \boldsymbol{y}_1, \dots, \boldsymbol{y}_n, \boldsymbol{\theta}) &\propto p(\Sigma) \times p(\boldsymbol{y}_1, \dots, \boldsymbol{y}_n \mid \boldsymbol{\theta}, \Sigma) \\
+&\propto \left[ | \Sigma |^{-(\nu_0 + p + 1) / 2} \times \exp\left(-\text{tr}(\mathbf{S}_0 \Sigma^{-1})  / 2\right) \right] \times
+\left[ | \Sigma |^{-n/2} \exp \left( - \text{tr}(\mathbf{S}_{\theta} \Sigma^{-1})  / 2 \right) \right] \\
+&=  | \Sigma |^{-(\nu_0 + n + p + 1) / 2} \exp \left( -\text{tr}(\left( \mathbf{S}_0 + \mathbf{S}_{\theta} \right) \Sigma^{-1}) / 2 \right) \\
+= \text{dinverse-Wishart}\left(\nu_0 + n, \left[\mathbf{S}_0 + \mathbf{S}_{\theta} \right]^{-1} \right) \\
+= \text{dinverse-Wishart}\left(\nu_n, \mathbf{S}_n^{-1} \right)
+\end{align}
+
+where $\nu_n = \nu_0 + n$ and $\mathbf{S}_n = \mathbf{S}_0 + \mathbf{S}_{\theta}$.
+
+Like the univariate case, the conditional distribution on $\Sigma$ is dependent 
+on $\nu_0 + n$, a sum of the prior sample size and the data sample size, 
+$\textbf{S}_0 + \textbf{S}_\theta$, the sum of the "prior" residual sum of 
+squares and the empirical sum of squares.
+
+Recall that, since inverse-Wishart matrices involve sampling from a normal 
+distribution with mean $\mathbf{0}$, indeed $\mathbf{S}_0$ can be treated as a 
+*residual* covariance matrix, given that $\mathbb{E}(\boldsymbol{y}_i -
+\boldsymbol{\theta}) = \mathbf{0}$.
+
+Finally, notice that the conditional expectation of the covariance matrix is is
+a weighted average of the prior expectation $\frac{1}{\nu_0 - p -
+1}\mathbf{S}_0$ and the unbiased estimator $\frac{1}{n} \mathbf{S}_{\theta}$:
+
+\begin{align}
+\mathbb{E}(\Sigma \mid \boldsymbol{y}_1, \dots, \boldsymbol{y}_n, \boldsymbol{\theta}) &= \frac{1}{\nu_0 + n - p - 1} (\mathbf{S}_0 + \mathbf{S}_{\theta}) \\
+&= \frac{\nu_0 - p - 1}{\nu_0 + n - p - 1} \frac{1}{\nu_0 - p - 1} \mathbf{S}_0 + \frac{n}{\nu_0 + n - p - 1}\frac{1}{n} \mathbf{S}_{\theta}.
+\end{align}
+
+So the Bayesian estimator is a biased estimator, but is still demonstrably 
+consistent as $n \to \infty$. As mentioned in Chapter 5, we hope that the 
+estimator is biased more towards the true mean, as long as the prior is mildly 
+informative.
+
+# Summary of inference with the multivariate normal
+
+Like in Chapter 5, here we summarize the moving parts of inference with the 
+multivariate normal sampling model. There are four prior parameters (note some
+are matrices):
+
+## (Semiconjugate) prior
+
+- $\mathbf{S}_0$ for the inverse-Wishart
+    - *related to* the prior estimate of the covariance between the variables
+    - Only *related* to because as mentioned above, there are some guidelines for what to use for $\nu_0$ and $\mathbf{S}_0$ such that the prior distribution is centered around $\Sigma_0$, the *true* prior estimate of the covariance matrix you are looking for.
+- $\nu_0$ for the inverse-Wishart
+    - a "prior sample size" from which the initial estimate of the *variance* is observed
+- $\boldsymbol{mu}_0$ for the multivariate normal
+    - an initial estimate for the population mean
+- $\Lambda_0$ for the multivariate normal
+    - the covariance (i.e. uncertainty) of the initial estimate for the population mean
+
+Somewhat similar to the univariate case, the estimate of the covariance matrix 
+for the inverse-Wishart prior is decoupled from the estimate of the covariance 
+of the mean vector in the multivariate normal prior, although it's common to set
+these the same (but again, see rules for determining $\nu_0$).
+
+Note that this is somewhat *different* than the univariate case; since there
+were no covariances to worry about, what was decoupled was "prior sample sizes"
+from which the prior variance and prior mean are observed. Like here, it was
+also common to set these the same.
+
+## Posterior
+
+The updated parameters are
+
+- $\mathbf{S}_n = \mathbf{S}_0 + \mathbf{S}_{\theta}$, where $\mathbf{S}_{\theta}$ is the residual sum of squares matrix
+- $\nu_n = \nu_0 + n$
+- $\mu_n = (\Lambda_0^{-1} + n\Sigma^{-1})^{-1} (\Lambda_0 \boldsymbol{\mu}_0 + n\Sigma^{-1}\bar{\boldsymbol{y}}) = \Lambda_n (\Lambda_0^{-1}\boldsymbol{\mu}_0 + n\Sigma^{-1}\bar{\boldsymbol{y}})$
+- $\Lambda_n = (\Lambda_0^{-1} + n\Sigma^{-1})^{-1}$
+ 
+# Gibbs sampling of the mean and covariance
+
+Knowing these values, we can now perform Gibbs sampling to sample from
+$p(\boldsymbol{\theta}, \Sigma \mid \boldsymbol{y}_1, \dots, \boldsymbol{y_n})$.
+Specifically, we start with an estimate of one of the two values -
+$\Sigma^{(0)}$ for simplicity - and use the following algorithm:
+
+1. Sample $\boldsymbol{\theta}^{(s + 1)} \sim \mathcal{N}(\boldsymbol{\mu}_n,
+\Lambda_n)$ where the parameters are calculated as above. This depends on the
+inverse of the previous $\Sigma^{(s)}$.
+2. Sample $\Sigma^{(s + 1)} \sim \text{inverse-Wishart}(\nu_n, \mathbf{S}_n^{-1})$, where the parameters depend on $\boldsymbol{\theta}^{(s + 1)}$.
+
+## Example: reading comprehension
+
+We return to the example of two reading comprehension exams, given pre- and
+post-training.
+
+
+### Specifying prior
+
+#### Mean
+
+Assume the tests are designed such that people generally score 50 out of 100.
+Thus, our prior mean is $\boldsymbol{\mu}_0 = (50, 50)^T$. Note that this
+implicitly assumes there is no effect of the training - the prior expectation of
+the post-training score is the same as the pre-training score.
+
+Next, we need to specify the covariance of the prior expectation of the mean.
+Specifically, since the scores are bounded between 0 and 100, we should put
+little probability outside the $[0, 100]$ range (so a bell curve centered on 50
+with 2 standard deviations $\in [0, 100]$). Then 1 standard deviation is 25 and
+the variance is thus 625.
+
+Since the scores are both testing reading ability the scores are probably 
+correlated. So if we want a prior correlation between $\theta_1$ and $\theta_2$
+of 0.5, we need to solve the correlation equation
+
+\begin{align}
+& 0.5 = \frac{\sigma_{1, 2}}{\sqrt{\sigma_1^2 \sigma_2^2}} \\
+\implies& \sigma_{1, 2} = 0.5 \sqrt{625^2} = 312.5 \\
+\end{align}
+
+Therefore,
+
+$$
+\Lambda_0 = \begin{bmatrix} 625 & 312.5 \\ 312.5 & 625 \end{bmatrix}
+$$
+
+#### Variance
+
+We will use the guideline mentioned earlier for loosely centering our covariance
+matrix prior on $\Lambda_0$. We'll set $\mathbf{S}_0^{-1} = \Lambda_0$ and
+$\nu_0 = p + 2 = 4$.
+
+### Code
+
+```{r}
+# Prior specification
+Mu_0 = c(50, 50)  # If coerced, will be treated as column
+Lambda_0 = rbind(c(625, 312.5), c(312.5, 625))
+
+nu_0 = 4
+S_0 = matrix(rep(Lambda_0), nrow = 2)
+```
+
+```{r}
+# Note that this defines rmvnorm and rwish, but I am goint to use default
+# implementations or packages to see what I would be using in the real world.
+# Specifically we need MASS::mvrnorm (Modern Applied Statistics with S), and
+# wishart comes default in newer R distributions with rWishart
+source("http://www.stat.washington.edu/people/pdhoff/Book/Data/data/chapter7.r")
+# Try plotting
+Y = Y.reading
+ggplot(data.frame(Y.reading)) +
+  geom_point(aes(x = pretest, y = posttest))
+```
+
+```{r}
+# Gibbs sampling
+library(MASS)
+n = nrow(Y) # Number of observations
+Sigma_0 = cov(Y) # Calculate covariance matrix; initial Sigma sample
+# NOTE: This initial Sigma sample doesn't end up in the gibbs sample - we throw
+# it away and start from scratch where sample 1 is the Theta based on Sigma_0, and
+# the Sigma based on that new Theta
+Sigma = Sigma_0
+ybar = colMeans(Y) # Faster way of calculating column means
+
+# TODO: Preallocate space for these instead of setting as NULL
+THETA = NULL
+SIGMA = NULL
+
+# Also, inv = solve to make it more readable
+inv = solve
+
+set.seed(1)
+for (s in 1:5000) {
+  # Update theta
+  # 1a. Compute params: Mu_n and Lambda_n from y_1, \dots, y_n and \Sigma^{(s)}
+  # > Compute Lambda_n according to equation 7.4
+  # Note: could cache inverse of priors
+  Lambda_n = inv(inv(Lambda_0) + n * inv(Sigma))
+  # > Compute Mu_n according to 7.5. Use Matrix mult
+  # Note that he first term in 7.5 is Lambda_n
+  Mu_n = Lambda_n %*% (inv(Lambda_0) %*% Mu_0 + n * inv(Sigma) %*% ybar)
+  
+  # 1b. Sample \theta^{(s + 1)} \sim multivariate normal mu_n, lambda_n
+  # Now we know Lambda_n, Mu_n as implied by the known Sigma and data (p. 108).
+  # Sample theta from multivariate normal (7.6, implied by 7.3)
+  Theta = mvrnorm(n = 1, Mu_n, Lambda_n)
+  
+  # Known Theta. Now sample a new Sigma. NOTE: Old sigma gets thrown away!
+  # 2a) Compute params for Sigma: Compute S_n from data and \theta^{(s + 1)}
+  # i.e. Given the data and this Theta, we need to calculate the parameters that
+  # define the full conditional distribution of \Sigma^{(s + 1)}
+  # S_n according to p.112 first paragraph - not defined, but could be in 7.9
+  # S_\theta is the residual sum of squares, defined in unlabeled equation after
+  # 7.8
+  # Use vectorized to avoid summation
+  # Calculate residuals, then do sum of squares
+  # Q: why t(Y)? just how elementwise works I guess
+  resid = t(Y) - c(Theta)
+  S_theta = resid %*% t(resid)
+  S_n = S_0 + S_theta
+  # 2b) Knowing the parameters for the full conditional distribution on Sigma
+  # (inverse wishart with nu_0 and S_n known), sample
+  # df = number of samples (degrees of freedom)
+  # Don't forget to invert it afterwards (inverse wishart)
+  # Weird thing is rWishart returns a weird list of arrays
+  Sigma = inv(rWishart(1, nu_0 + n, inv(S_n))[, , 1])
+  
+  THETA = rbind(THETA, Theta)
+  # Flatten sigma??
+  SIGMA = rbind(SIGMA, c(Sigma))
+}
+
+```
+
+Here are some associated calculations with this sample
+
+```{r}
+# Confidence interval for difference between post and pre test
+quantile(THETA[, 2] - THETA[, 1], prob = c(0.025, 0.5, 0.975))
+
+# Likelihood that the mean for the second test is greater than the mean for the
+# 1st test
+mean(THETA[, 2] > THETA[, 1])
+
+# Confidence interval for the correlation
+CORR = apply(SIGMA, MARGIN = 1, FUN = function(row) {
+  # indices 1 and 4 are correlation of dims 1 and 2
+  # indices 2 is equal to index 3 is equal to covariance
+  row[2] / sqrt(row[1] * row[4])
+})
+# Obviously there is a correlation
+quantile(CORR, prob = c(0.025, 0.5, 0.975))
+```
+
+We can also work with the posterior predictive distribution by sampling new
+pairs $(y_1, y_2)^{T(s)}$ from our samples of $\boldsymbol{\theta}^{(s)}$ and
+$\Sigma^{(s)}$:
+
+```{r}
+Y = matrix(0, nrow = 5000, ncol = 2)
+for (s in 1:5000) {
+  Y[s, ] = mvrnorm(1, THETA[s, ], matrix(SIGMA[s, ], nrow = 2))
+}
+
+# Probability that the post-test score of a randomly selected person is greater
+# than the pre-test score
+mean(Y[, 2] > Y[, 1])
+```
+
+Importantly, the probability of an individual having a higher post-test score
+than pre-test is much lower than the near-1 probability of the difference in
+mean test scores. It's important to have clarified the difference between
+population means and individuals when drawing conclusions about your data.
+
+# Missing data and imputation
+
+Another useful application of Bayesian analysis and the multivariate normal
+model is the imputation of missing data. There are various naive ways to deal with missing data in datasets:
+
+- listwise deletion: just discard points with missing data. But this wastes valuable data!
+- replace missing variables for points with the mean of that variable for the 
+entire dataset. But this results in inaccurate estimates, since a data point's 
+other variables may contain information about the data point's 
+
+The Bayesian approach offers a neat solution around this. The idea is that the
+likelihood of a datapoint with missing values is the likelihood of the observed
+values while integrating over the missing values.
+
+Specifically, let's assume in a dataset $\boldsymbol{Y}$ with missing values, we
+have a corresponding matrix $\boldsymbol{O}$ which contains a 1 if the
+corresponding element in $\boldsymbol{Y}$ exists, else 0. (This is just to help
+us mathematically indicate which variables are missing)
+
+Then consider a single observation $\boldsymbol{y}_i$. We have
+
+\begin{align}
+p(\boldsymbol{o}_i, \{ y_{i, j} \; : \; o_{i, j} = 1 \} \mid \boldsymbol{\theta}, \Sigma) &=
+p(\boldsymbol{o}_i) \times \int \left[ p(\boldsymbol{y}_i \mid \boldsymbol{\theta}, \Sigma) \prod_{y_{i, j} \; : \; o_{i, j} = 0} dy_{i, j} \right]
+\end{align}
+
+i.e. we are integrating over all possible "full" observations of datapoints 
+$\boldsymbol{y}$ with respect to the variables that we don't have. The variables
+we have observed stay constant.
+
+## Gibbs sampling with missing data
+
+Normally we use Gibbs sampling to estimate the posterior $p(\boldsymbol{\theta},
+\Sigma \mid \mathbf{Y})$ Here, however, we don't have a full dataset
+$\mathbf{Y}$; rather, we have an observed dataset $\mathbf{Y}_{\text{obs}}$ and
+missing values $\mathbf{Y}_{\text{miss}}$. The key idea is to *also* estimate
+the posterior distribution on $\mathbf{Y}_{\text{miss}}$, which will also help
+us make more accurate estimates on $\boldsymbol{\theta}$ and $\Sigma$. Using
+Gibbs sampling, when we have sample values $\boldsymbol{\theta}^{(s)}$ and
+$\Sigma^{(s)}$, we can sample from
+
+$$
+\mathbf{Y}_{\text{miss}}^{(s)} \sim p(\mathbf{Y}_{\text{miss}} \mid \mathbf{Y}_{\text{obs}}, \boldsymbol{\theta}^{(s)}, \Sigma^{(s)})
+$$
+
+Specifically, to sample from the above, we simply sample the missing values of
+each data point independently. For a data point $\boldsymbol{y}$ with missing
+values, let $a$ be the indices of the observed values and $b$ be the indices of
+the missing values. Then it is shown that sampling $\boldsymbol{y}_{[b]}$ given
+known observed variables and the parameters $\boldsymbol{\theta}$ and $\Sigma$
+also follows a multivariate normal distribution, but with mean and covariance
+matrices with dimension $| b |$ that take into account the existing variables:
+
+\begin{align}
+\boldsymbol{y}_{[b]} \mid \boldsymbol{y}_{[a]}, \boldsymbol{\theta}, \Sigma \sim \mathcal{N}(\boldsymbol{\theta}_{b \mid a}, \Sigma_{b \mid a})
+\end{align}
+
+where
+
+- $\boldsymbol{\theta}_{b \mid a} = \boldsymbol{\theta}_b + \Sigma_{[b, a]}(\Sigma_{[a, a]})^{-1} (\boldsymbol{y}_{[a]} - \boldsymbol{\theta}_{[a]})$;
+  - Intuitively, the mean of the multivariate normal distribution on the missing
+  values *given* some observed values starts with the unconditional mean of the 
+  observed values, plus or minus some offset that depends on the observed values
+  and the correlations between the observed and missing values. For example, if
+  it is known that a datapoint's observed values are quite high relative to the
+  mean $(\boldsymbol{y}_a - \boldsymbol{\theta}_a)$, and that there is a 
+  positive correlation between observed values and missing values, we would 
+  expect the missing values to generally be higher as well.
+- $\Sigma_{b \mid a} = \Sigma_{[b, b]} - \Sigma_{[b, a]} (\Sigma_{[a, a]})^{-1} \Sigma_{[a, b]}$
+  - Intuitively, the covariance matrix of the conditional distribution on the
+  missing values starts with the unconditional covariance, but notice the minus
+  sign; since the covariance matrix is positive definite, knowing about some
+  observed variables will decrease our uncertainty about the missing values.
+
+Once we've sampled a set of missing values, notice that we now have a full 
+"dataset" if we combine our observed values with the newly sampled missing 
+values. This means that we can sample from the full conditional distributions of
+$\boldsymbol{\theta}$ and $\Sigma$ normally, and from there, once again sample a
+new set of $\mathbf{Y}_{\text{miss}}$.
+
+To summarize Gibbs sampling with missing data: assume starting values $\Sigma^{(0)}$ and $\mathbf{Y}_{\text{miss}}^{(0)}$ - perhaps the empirical covariance matrix and the unconditional means of the observed sample. Then the algorithm has just one more step:
+
+1. Sample $\boldsymbol{\theta}^{(s + 1)}$ from $p(\boldsymbol{\theta} \mid \mathbf{Y}_{\text{obs}}, \mathbf{Y}_{\text{miss}}^{(s)}, \Sigma^{(s)})$
+2. Sample $\Sigma^{(s + 1)}$ from $p(\Sigma \mid \mathbf{Y}_{\text{obs}}, \mathbf{Y}_{\text{miss}}^{(s)}, \boldsymbol{\theta}^{(s)})$
+3. Sample $\mathbf{Y}_{\text{miss}}^{(s + 1)}$ from $p(\mathbf{Y}_{\text{miss}} \mid \mathbf{Y}_{\text{obs}}, \boldsymbol{\theta}^{(s)}, \Sigma^{(s)})$
+
+For steps 1 and 2, you simply combine the sampled missing data and the
+observed data for a full dataset $\mathbf{Y}$ and sample from the full
+conditional distributions like normal.
+
+## Example
+
+Let's take a look at an example using a dataset with four health-related
+measurements on 200 women near Phoenix, Arizona. Notice that this dataset has
+missing values. We'll assume that the data is *missing at random*, which is
+necessary for this analysis.
+
+```{r, warning = FALSE}
+Y = Y.pima.miss
+head(Y) # Notice missing data
+library(GGally)
+ggpairs(Y)
+```
+
+Gibbs sampling according to the 3-step scheme described above is implemented
+below. For priors, we set $\boldsymbol{\mu}_0 = (120, 64, 26, 26)$ assuming we
+know these are the national averages of the health measurements. We then (waving
+our hands a little) select prior variances that keep these measurements mostly 
+around zero and only lightly centered around our estimates.
+
+```{r cache=TRUE}
+# Gibbs sampling
+n = nrow(Y)
+p = ncol(Y)
+mu0 = c(120, 64, 26, 26)
+sd0 = mu0 / 2
+# Setting prior on covariance
+L0 = matrix(.1, p, p)
+diag(L0) = 1
+L0 = L0 * outer(sd0, sd0)
+print(L0)
+
+# Variance prior lightly concentrated, where nu0 > p is nu0 = p + 2
+nu0 = p + 2
+# Scale matrix - set to be the same as L0
+S0 = L0
+
+# Set starting values
+Sigma = S0
+Y.full = Y
+O = 1 * (!is.na(Y))  # Get NOT NAs, coerce to int via * 1
+for (j in 1:p) { # Looping through columns
+  # For missing values in column, set to mean of the observed values
+  mean.wo.na = mean(Y.full[, j], na.rm = TRUE)
+  # Rows: all of those that are NA, and the jth column, set it to this mean
+  Y.full[is.na(Y.full[, j]), j] = mean.wo.na
+}
+
+# Gibbs
+THETA = SIGMA = Y.MISS = NULL
+set.seed(1)
+for (s in 1:1000) {
+  # Update theta: step 1 of p.117 which is the same as previous
+  ybar = colMeans(Y.full)
+  Ln = inv(inv(L0) + n * inv(Sigma))
+  mun = Ln %*% (inv(L0) %*% mu0 + n * inv(Sigma) %*% ybar)
+  theta = mvrnorm(1, mun, Ln)
+  
+  # Update sigma: step 2 of p.117, same as previous
+  resid = t(Y.full) - c(theta)
+  Stheta = resid %*% t(resid)
+  Sn = S0 + Stheta
+  Sigma = inv(rWishart(1, nu0 + n, inv(Sn))[, , 1])
+  
+  # Update ymiss: step 3 of p.117, requires eqs 7.10, 7.11
+  # Loop through rows of data (takes longer!!), need to sample rows individually
+  # (independent) top of p.118
+  for (i in 1:n) {
+    # Skip if we already have it
+    if (all(O[i, ] == 1)) {
+      next
+    }
+    # Partition b = NA rows, a = present rows
+    # Still works of a, b are empty, I presume
+    oi = O[i, ]
+    a = oi == 1
+    b = oi == 0
+    
+    # Now we want to sample yb | ya, Sigma, Theta
+    
+    # \Sigma_{[a, a]}^{-1}, used in eqs 7.10 AND 7.11 (so calc once)
+    iSa = inv(Sigma[a, a])
+    # Calcualte \Sigma_{[b, a]}(\Sigma_{[a, a]})^{-1} used in 7.10 AND 7.11
+    beta.j = Sigma[b, a] %*% iSa
+    # Calculate Sigma.j (7.11). Start with covariacne matrix for the missing
+    # vars, then influence by beta (decrease variance)
+    Sigma.j = Sigma[b, b] - beta.j %*% Sigma[a, b]
+    # Calculate theta.j (7.10). Start with standard theta, then change based on
+    # residuals of other vals and what we wknow about covariances
+    yi = Y.full[i, ]
+    theta.j = theta[b] + beta.j %*% t(yi[a] - theta[a])
+    
+    # Now we have samples for subset of b. Preserver order, now sample
+    Y.full[i, b] = mvrnorm(1, theta.j, Sigma.j)
+  }
+  
+  # Concate
+  THETA = rbind(THETA, theta)
+  SIGMA = rbind(SIGMA, c(Sigma))
+  Y.MISS = rbind(Y.MISS, Y.full[O == 0])
+}
+
+# Means and confidence intervals for posterior means
+colnames(Y)
+colMeans(THETA)
+apply(THETA, MARGIN = 2, FUN = function(d) quantile(d, prob = c(0.025, 0.5, 0.975)))
+
+# Sample correlation matrices
+COR = array(dim = c(p, p, 1000))
+for (s in 1:nrow(SIGMA)) {
+  # It's in rows right now, refold into matrix
+  Sig = matrix(SIGMA[s, ], nrow = p, ncol = p)
+  # Calculate correlation matrix: (TODO: figure out how this works)
+  COR[, , s] = Sig / sqrt(diag(Sig) %o% diag(Sig))
+}
+
+# Mean correlations from the correlation matrix samples. Can also calculate
+# confidence intervals with quantile
+apply(COR, MARGIN = c(1, 2), FUN = mean)
+```
+
+# Exercises
