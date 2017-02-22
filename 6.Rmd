@@ -13,10 +13,10 @@ output:
 
 <script type="text/x-mathjax-config">
 MathJax.Hub.Config({
-  TeX: { 
+  TeX: {
       equationNumbers: {
             autoNumber: "all"
-      } 
+      }
   }
 });
 </script>
@@ -42,7 +42,7 @@ $$
 $$
 
 However, consider that we may want to decouple the priors of the two parameters.
-This allows flexibility with specification of the prior (initial estimate and 
+This allows flexibility with specification of the prior (initial estimate and
 confidence) of either parameter.
 
 Consider the midge wing example: we picked a prior on $\theta$ that was centered
@@ -67,7 +67,7 @@ distributions.
 
 # Discrete approximations
 
-Why posterior densities are hard to calculate for nonconjugate priors using 
+Why posterior densities are hard to calculate for nonconjugate priors using
 Bayes rule?
 
 \begin{align}
@@ -85,7 +85,7 @@ Notice however that we can still evaluate relative probabilites of
 $\boldsymbol{\theta}_a$ and $\boldsymbol{\theta}_b$, as their ratio cancels out
 the integral. More generally, we can create a discrete approximation of the
 probabilities by evaluating the numerator of this density for values of
-$\boldsymbol{\theta}$ across an $n$-dimensional grid, then dividing each of 
+$\boldsymbol{\theta}$ across an $n$-dimensional grid, then dividing each of
 these unnormalized densities by the sum of the entire grid.
 
 Funnily, this is pretty much what I have been doing in the past chapters when
@@ -131,8 +131,8 @@ ggplot(df, aes(x = theta, y = sigma2, z = density)) +
 
 # Sampling from the conditional distributions
 
-Again, to proceed with Gibbs sampling, we simply need to calculate the full 
-conditional distributions of the parameters. We already computed the 
+Again, to proceed with Gibbs sampling, we simply need to calculate the full
+conditional distributions of the parameters. We already computed the
 full conditional for $\theta \mid \sigma^2, y_1, \dots, y_n$ in 5.2. For $\theta
 \mid \mathcal{N}(\mu_0, \tau_0^2)$, then $\theta \mid \sigma^2, y_1, \dots, y_n
 \sim \mathcal{N}(\mu_n, \tau_n^2)$, where $\mu_n$ and $\tau_n^2$ I will not
@@ -146,7 +146,7 @@ p(\sigma^2 \mid \theta, y_1, \dots, y_n) &\propto
 &\propto (\sigma^2)^{-(\nu_0 + 1) / 2 - 1} \times \text{exp}\left(-\frac{1}{\sigma^2} \times \frac{1}{2}\left(\sigma_0^2 \nu_0 + \sum_{i=1}^{n} (y_i - \theta)^2 \right) \right) \\
 \end{align}
 
-So $\sigma^2 \sim \text{inverse-gamma}(\nu_n / 2, \nu_n \sigma_n^2(\theta) / 
+So $\sigma^2 \sim \text{inverse-gamma}(\nu_n / 2, \nu_n \sigma_n^2(\theta) /
 2)$, and $\tilde{\sigma^2} \sim \text{gamma}(\cdot, \cdot))$, with the
 parameters:
 
@@ -202,14 +202,14 @@ for (s in 2:S) {
   mun = (mu0 / t20 + n * ybar * phi[2]) / (1/t20 + n * phi[2])
   t2n = 1 / (1 / t20 + n * phi[2])
   phi[1] = rnorm(1, mun, sqrt(t2n))
-  
+
   # Sample 1/sigma^2 based on \theta
   nun = nu0 + n
   s2n = (nu0 * s20 + (n - 1) * s2 + n * (ybar - phi[1])^2) / nun
   # This posterior distribution: inverse-gamma(\nu_n / 2, \sigma^2_n(\theta)
   # \nu_n / 2)
   phi[2] = rgamma(1, nun / 2, s2n * nun / 2)
-  
+
   PHI[s, ] = phi
 }
 ```
@@ -263,8 +263,8 @@ for standard monte carlo sampling, a sufficient number of Gibbs samples
 approaches the target distribution. The question of course is how many samples
 is enough, which is covered in the next section.
 
-Another important point is that Gibbs sampling is not a Bayesian model. These 
-two concepts should be separated: Gibbs sampling is a general framework for 
+Another important point is that Gibbs sampling is not a Bayesian model. These
+two concepts should be separated: Gibbs sampling is a general framework for
 "observing" the posterior probability distribution, whatever that distribution
 is.
 
@@ -325,10 +325,10 @@ for (s in 2:S) {
   })
   probs = probs / sum(probs)
   phi[1] = sample.int(3, size = 1, prob = probs)
-  
+
   # Sample theta s+1 based on delta (easy)
   phi[2] = rnorm(1, MU.DENS[phi[1]], sqrt(S2.DENS[phi[1]]))
-  
+
   PHI[s, ] = phi
 }
 
@@ -350,9 +350,9 @@ ggplot(theta.mcmc, aes(x = iteration, y = theta)) +
 Notice that the histogram does not adequately approximate the distribution. Try
 changing the number of samples to 10000 or 100000, which should be better.
 
-The problem is that since the sampler generates dependent samples, the sampler 
-sticks in high probability regions for a long time. After sufficient samples, 
-this balances out, but sometimes the number of samples required may be very 
+The problem is that since the sampler generates dependent samples, the sampler
+sticks in high probability regions for a long time. After sufficient samples,
+this balances out, but sometimes the number of samples required may be very
 large.
 
 ### Getting it right
@@ -411,7 +411,7 @@ ggplot(midge.df, aes(x = iteration, y = `1/sigma^2`)) +
   geom_point() + geom_line(alpha = 0.25)
 ```
 
-By viewing the autocorrelation function and effective sample sizes of our data, 
+By viewing the autocorrelation function and effective sample sizes of our data,
 we can see that the samples look quite good and seem to have reasonable effective sample sizes.
 
 ```{r}
@@ -427,30 +427,124 @@ effectiveSize(midge.df$`1/sigma^2`)
 
 ### a
 
-$\theta_A$ and $\theta_B$ are dependent, since $p(\theta_B \mid \theta_A = 10) =
-10\gamma) \neq 5\gamma = p(\theta_B \mid \theta_A = 5)$. This prior is justified
-if we have reason to believe that $\theta_B$ is some product of $\theta_A$ plus
-random Gamma-distributed noise.
+$$
+\begin{align}
+\text{Cov}(\theta_A, \theta_B) &= \mathbb{E}\left[\theta_A \theta_B\right] - \mathbb{E}[\theta_A]\mathbb{E}[\theta_B] \\
+&= \mathbb{E}[\theta^2\gamma] - \mathbb{E}[\theta] \mathbb{E}[\theta\gamma] \\
+&= \mathbb{E}\left[\theta^2\right] \mathbb{E}\left[ \gamma \right] - \mathbb{E}[\theta]\mathbb{E}[\theta]\mathbb{E}[\gamma] & \theta \perp \gamma \\
+&= \mathbb{E}\left[\theta^2\right] \mathbb{E}\left[ \gamma \right] - \mathbb{E}[\theta]^2\mathbb{E}[\gamma] \\
+&= \left(\mathbb{E}[\theta^2] - \mathbb{E}[\theta]^2 \right) \mathbb{E}[\gamma] \\
+&= \text{Var}(\theta) \mathbb{E}[\gamma] \\
+&\neq 0
+\end{align}
+$$
+
+Since $\text{Cov}(\theta_A, \theta_B) \neq 0$, $\theta_A$ and $\theta_B$ are
+dependent.
+
+This prior is justified if we have reason to believe that $\theta_B$ is some
+product of $\theta_A$ plus random Gamma-distributed noise.
 
 ### b
 
-First the full conditional
+First the joint posterior distribution
 
+$$
 \begin{align}
-p(\theta, \gamma \mid \mathbf{y}_A, \mathbf{y}_B)
-&\propto p(\theta, \gamma) \times p(\mathbf{y}_A, \mathbf{y}_B \mid \theta, \gamma) \\
-&\propto p(\theta) \times p(\gamma) \times p(\mathbf{y}_A \mid \theta) \times p(\mathbf{y}_B \mid \theta, \gamma) & \text{$\mathbf{y}_A \perp \gamma$} \\
-&\propto \left(\theta^{a_\theta - 1}e^{-b_\theta \theta}\right) \times \left(\gamma^{a_\gamma - 1}e^{-b_\gamma \gamma} \right) \times  \left(\prod_{i=1}^{n_{A}} \theta^{y_{A_i}} e^{-\theta} \right) \times \left(\prod_{i=1}^{n_{B}} \left( \text{Product of two Gammas??} \right) \right) \\
+p(\theta, \gamma \mid \boldsymbol{y}_A, \boldsymbol{y}_B)
+&\propto p(\theta, \gamma) \times p(\boldsymbol{y}_A, \boldsymbol{y}_B \mid \theta, \gamma) \\
+&= p(\theta) \times p(\gamma) \times p(\boldsymbol{y}_A \mid \theta) \times p(\boldsymbol{y}_B \mid \theta, \gamma) & \boldsymbol{y}_A \perp \gamma \\
+&\propto \left(\theta^{a_\theta - 1}e^{-b_\theta \theta}\right) \times \left(\gamma^{a_\gamma - 1}e^{-b_\gamma \gamma} \right) \times  \left(\prod_{i=1}^{n_{A}} \theta^{y_{A_i}} e^{-\theta} \right) \times \left(\prod_{i=1}^{n_{B}} (\gamma \theta)^{y_{B_i}} e^{-\gamma \theta} \right) \\
+&= \left(\theta^{a_\theta - 1}e^{-b_\theta \theta}\right) \times \left(\gamma^{a_\gamma - 1}e^{-b_\gamma \gamma} \right) \times  \left( \theta^{\sum_{i = 1}^{n_A} y_{A_i}} e^{-n_A \theta} \right) \times \left( (\gamma \theta)^{\sum_{i=1}^{n_B} y_{B_i}} e^{- n_B \gamma \theta} \right) \\
+&= \left(\theta^{a_\theta - 1}e^{-b_\theta \theta}\right) \times \left(\gamma^{a_\gamma - 1}e^{-b_\gamma \gamma} \right) \times  \left( \theta^{n_A \bar{y}_A} e^{-n_A \theta} \right) \times \left( (\gamma \theta)^{n_B \bar{y}_B} e^{- n_B \gamma \theta} \right) \\
 \end{align}
+$$
 
+So
+
+$$
+\begin{align}
+p(\theta, \mid \boldsymbol{y}_A, \boldsymbol{y}_B, \gamma)
+&\propto \left(\theta^{a_\theta - 1}e^{-b_\theta \theta}\right) \times \left(\gamma^{a_\gamma - 1}e^{-b_\gamma \gamma} \right) \times  \left( \theta^{n_A \bar{y}_A} e^{-n_A \theta} \right) \times \left( (\gamma \theta)^{n_B \bar{y}_B} e^{- n_B \gamma \theta} \right) \\
+&\propto \left(\theta^{a_\theta - 1}e^{-b_\theta \theta}\right) \times \left( \theta^{n_A \bar{y}_A} e^{-n_A \theta} \right) \times \left( (\gamma \theta)^{n_B \bar{y}_B} e^{- n_B \gamma \theta} \right) \\
+&\propto \theta^{a_\theta + n_A \bar{y}_A + n_B \bar{y}_B - 1} \exp \left( - (b_\theta + n_A + n_B \gamma ) \theta \right) \\
+&\propto \text{dgamma}\left(a_\theta + n_A \bar{y}_A + n_B \bar{y}_B, b_\theta + n_A + n_B \gamma \right)
+\end{align}
+$$
+
+### c
+
+$$
+\begin{align}
+p(\gamma, \mid \boldsymbol{y}_A, \boldsymbol{y}_B, \theta)
+&\propto \left(\theta^{a_\theta - 1}e^{-b_\theta \theta}\right) \times \left(\gamma^{a_\gamma - 1}e^{-b_\gamma \gamma} \right) \times  \left( \theta^{n_A \bar{y}_A} e^{-n_A \theta} \right) \times \left( (\gamma \theta)^{n_B \bar{y}_B} e^{- n_B \gamma \theta} \right) \\
+&\propto \left(\gamma^{a_\gamma - 1}e^{-b_\gamma \gamma} \right) \times \left( (\gamma \theta)^{n_B \bar{y}_B} e^{- n_B \gamma \theta} \right) \\
+&\propto \left(\gamma^{a_\gamma - 1}e^{-b_\gamma \gamma} \right) \times \left( \gamma^{n_B \bar{y}_B} e^{- n_B \gamma \theta} \right) \\
+&\propto \gamma^{a_\gamma + n_B \bar{y}_B - 1} \exp\left( -(b_\gamma + n_B \theta) \gamma \right) \\
+&\propto \text{dgamma}\left(a_\gamma + n_B\bar{y}_B, b_\gamma + n_B \theta \right)
+\end{align}
+$$
+
+### d
 
 ```{r}
-hist(rgamma(5000, 2, 3) * rgamma(5000, 4, 5))
-df = data.frame(
-  gamma = seq(0, 6, length = 500),
-  density = dgamma(seq(0, 6, length = 500), 2 * 4, 3 * 5)
-)
-qplot(x = df$gamma, y = df$density, geom = 'line')
+Y_a <- scan(url('http://www.stat.washington.edu/~pdhoff/Book/Data/hwdata/menchild30bach.dat'))
+Y_b <- scan(url('http://www.stat.washington.edu/~pdhoff/Book/Data/hwdata/menchild30nobach.dat'))
+n_a = length(Y_a)
+n_b = length(Y_b)
+ybar_a = mean(Y_a)
+ybar_b = mean(Y_b)
+
+a_theta = 2
+b_theta = 1
+
+S = 5000
+
+ab_gamma = c(8, 16, 32, 64, 128)
+
+theta_diff = sapply(ab_gamma, function(abg) {
+  a_gamma = b_gamma = abg
+
+  THETA = numeric(S)
+  GAMMA = numeric(S)
+
+  # Starting values
+  theta = ybar_a
+  gamma = ybar_a / ybar_b  # Relative rate \theta_B / \theta_A
+
+  for (s in 1:S) {
+    # Sample theta \text{dgamma}\left(a_\theta + n_A \bar{y}_A + n_B \bar{y}_B, b_\theta + n_A + n_B \gamma \right)
+    theta = rgamma(
+      1,
+      a_theta + n_a * ybar_a + n_b * ybar_b,
+      b_theta + n_a + n_b * gamma
+    )
+
+    # Sample gamma from \text{dgamma}\left(a_\gamma + n_B\bar{y}_B, b_\gamma + n_B \theta \right)
+    gamma = rgamma(
+      1,
+      a_gamma + n_b * ybar_b,
+      b_gamma + n_b * theta
+    )
+
+    THETA[s] = theta
+    GAMMA[s] = gamma
+  }
+
+  # Reconstruct \theta_A, \theta_B
+  THETA_A = THETA
+  THETA_B = THETA * GAMMA
+
+  mean(THETA_B - THETA_A)
+})
+
+ggplot(data.frame(ab_gamma = ab_gamma, theta_diff = theta_diff), aes(x = ab_gamma, y = theta_diff)) +
+  geom_point() +
+  geom_line()
 ```
 
-## 6.2
+Since $a_\gamma$ and $b_\gamma$ are equal, the gamma distribution is centered
+around 1 and the magnitude represents the strength of our belief that $\gamma$
+(the proportion $\theta_B / \theta_A$) is 1. As expected, as our belief in that
+increases, the mean posterior difference between $\theta_B$ and $\theta_A$
+decreases.
