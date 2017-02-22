@@ -326,8 +326,8 @@ p(\Sigma \mid \boldsymbol{y}_1, \dots, \boldsymbol{y}_n, \boldsymbol{\theta}) &\
 &\propto \left[ | \Sigma |^{-(\nu_0 + p + 1) / 2} \times \exp\left(-\text{tr}(\mathbf{S}_0 \Sigma^{-1})  / 2\right) \right] \times
 \left[ | \Sigma |^{-n/2} \exp \left( - \text{tr}(\mathbf{S}_{\theta} \Sigma^{-1})  / 2 \right) \right] \\
 &=  | \Sigma |^{-(\nu_0 + n + p + 1) / 2} \exp \left( -\text{tr}(\left( \mathbf{S}_0 + \mathbf{S}_{\theta} \right) \Sigma^{-1}) / 2 \right) \\
-= \text{dinverse-Wishart}\left(\nu_0 + n, \left[\mathbf{S}_0 + \mathbf{S}_{\theta} \right]^{-1} \right) \\
-= \text{dinverse-Wishart}\left(\nu_n, \mathbf{S}_n^{-1} \right)
+&\propto \text{dinverse-Wishart}\left(\nu_0 + n, \left[\mathbf{S}_0 + \mathbf{S}_{\theta} \right]^{-1} \right) \\
+&= \text{dinverse-Wishart}\left(\nu_n, \mathbf{S}_n^{-1} \right)
 \end{align}
 
 where $\nu_n = \nu_0 + n$ and $\mathbf{S}_n = \mathbf{S}_0 + \mathbf{S}_{\theta}$.
@@ -672,7 +672,7 @@ necessary for this analysis.
 Y = Y.pima.miss
 head(Y) # Notice missing data
 library(GGally)
-ggpairs(Y)
+suppressWarnings(ggpairs(Y))
 ```
 
 Gibbs sampling according to the 3-step scheme described above is implemented
@@ -757,7 +757,7 @@ for (s in 1:1000) {
     Y.full[i, b] = mvrnorm(1, theta.j, Sigma.j)
   }
   
-  # Concate
+  # Concat
   THETA = rbind(THETA, theta)
   SIGMA = rbind(SIGMA, c(Sigma))
   Y.MISS = rbind(Y.MISS, Y.full[O == 0])
@@ -783,3 +783,368 @@ apply(COR, MARGIN = c(1, 2), FUN = mean)
 ```
 
 # Exercises
+
+## 7.1
+
+### a
+
+Since the density is uniform with respect to $\boldsymbol{\theta}$, the integral
+over the support of this function is infinite and cannot be 1.
+
+### b
+
+\begin{align}
+p_J(\boldsymbol{\theta}, \Sigma \mid \boldsymbol{y}_1, \dots, \boldsymbol{y}_n) &\propto p(\boldsymbol{\theta}, \Sigma) \times p(\boldsymbol{y}_1, \dots, \boldsymbol{y}_n \mid \boldsymbol{\theta}, \Sigma) \\
+&\propto \left[ | \Sigma |^{-(p + 2) / 2} \right] \times \left[ | \Sigma |^{-n / 2} \exp\left( -\text{tr}(\mathbf{S}_\theta \Sigma^{-1}) \right) \right] \\
+&\propto | \Sigma |^{-(p + n + 2) / 2} \exp \left( -\text{tr}(\mathbf{S}_\theta \Sigma^{-1}) / 2 \right)
+\end{align}
+
+To obtain the full conditionals of a parameter, we treat the other parameters as constant, so
+
+\begin{align}
+p_J(\boldsymbol{\theta} \mid \boldsymbol{y}_1, \dots, \boldsymbol{y}_n, \Sigma) &\propto \exp(- \text{tr}(\mathbf{S}_\theta \Sigma^{-1}) / 2) \\
+&= \exp(-\sum_{i = 1}^n (\boldsymbol{y}_i - \theta)^T \Sigma^{-1} (\boldsymbol{y}_i - \theta) / 2 ) & \text{Expand back} \\
+&= \exp(- n (\bar{\boldsymbol{y}} - \theta)^T \Sigma^{-1} (\bar{\boldsymbol{y}} - \theta) / 2 ) \\
+&= \text{dnormal}(\bar{\boldsymbol{y}}, \Sigma / n)
+\end{align}
+
+and
+
+\begin{align}
+p_J(\Sigma \mid \boldsymbol{y}_1, \dots, \boldsymbol{y}_n, \boldsymbol{\theta}) &\propto | \Sigma | ^{-(p + n + 2) / 2 } \exp(- \text{tr}(\mathbf{S}_\theta \Sigma^{-1}) / 2) \\
+&\propto \text{dinverse-wishart}\left(n + 1, \mathbf{S}_\theta^{-1} \right)
+\end{align}
+
+## 7.3
+
+```{r}
+bluecrab = as.matrix(read.table(url('http://www.stat.washington.edu/people/pdhoff/Book/Data/hwdata/bluecrab.dat')))
+orangecrab = as.matrix(read.table(url('http://www.stat.washington.edu/people/pdhoff/Book/Data/hwdata/orangecrab.dat')))
+```
+
+### a
+
+```{r cache=TRUE}
+crab.mcmc = lapply(list('bluecrab' = bluecrab, 'orangecrab' = orangecrab), function(crab) {
+  p = ncol(crab)
+  n = nrow(crab)
+  ybar = colMeans(crab)
+  
+  # Prior parameters
+  
+  mu0 = ybar
+  lambda0 = s0 = cov(crab)
+  nu0 = 4
+  
+  S = 10000
+  THETA = matrix(nrow = S, ncol = p)
+  SIGMA = array(dim = c(p, p, S))
+  
+  # Start with sigma sample
+  sigma = s0
+  
+  # Gibbs sampling
+  library(MASS)
+  
+  # Also, inv = solve to make it more readable
+  inv = solve
+  
+  for (s in 1:S) {
+    # Update theta
+    lambdan = inv(inv(lambda0) + n * inv(sigma))
+    mun = lambdan %*% (inv(lambda0) %*% mu0 + n * inv(sigma) %*% ybar)
+    theta = mvrnorm(n = 1, mun, lambdan)
+    
+    # Update sigma
+    resid = t(crab) - c(theta)
+    stheta = resid %*% t(resid)
+    sn = s0 + stheta
+    sigma = inv(rWishart(1, nu0 + n, inv(sn))[, , 1])
+    
+    THETA[s, ] = theta
+    SIGMA[, , s] = sigma
+  }
+  
+  list(theta = THETA, sigma = SIGMA)
+})
+```
+
+### b
+
+```{r echo=FALSE}
+bluecrab.df = data.frame(crab.mcmc$bluecrab$theta, species = 'blue')
+orangecrab.df = data.frame(crab.mcmc$orangecrab$theta, species = 'orange')
+colnames(bluecrab.df) = colnames(orangecrab.df) = c('theta1', 'theta2', 'species')
+crab.df = rbind(bluecrab.df, orangecrab.df)
+
+bluecrab.means = as.data.frame(t(as.matrix(colMeans(bluecrab.df[, c('theta1', 'theta2')]))))
+orangecrab.means = as.data.frame(t(as.matrix(colMeans(orangecrab.df[, c('theta1', 'theta2')]))))
+bluecrab.means$species = 'blue'
+orangecrab.means$species = 'orange'
+crab.means = rbind(bluecrab.means, orangecrab.means)
+
+library(ggrepel)
+
+ggplot(crab.df, aes(x = theta1, y = theta2)) +
+  geom_point(alpha = 0.01) +
+  geom_point(data = crab.means, color = 'red') +
+  geom_label_repel(data = crab.means, aes(label = paste0("(", round(theta1, 2), ", ", round(theta2, 2), ")"))) +
+  facet_wrap(~ species)
+```
+
+There is strong evidence that orange crabs tend to be larger in both
+measurements than blue crabs:
+
+```{r}
+mean(orangecrab.df$theta1 > bluecrab.df$theta1)
+mean(orangecrab.df$theta2 > bluecrab.df$theta2)
+```
+
+### c
+
+```{r}
+bluecrab.cor = apply(crab.mcmc$bluecrab$sigma, MARGIN = 3, FUN = function(covmat) {
+  covmat[1, 2] / (sqrt(covmat[1, 1] * covmat[2, 2]))
+})
+orangecrab.cor = apply(crab.mcmc$orangecrab$sigma, MARGIN = 3, FUN = function(covmat) {
+  covmat[1, 2] / (sqrt(covmat[1, 1] * covmat[2, 2]))
+})
+cor.df = data.frame(species = c(rep('blue', length(bluecrab.cor)), rep('orange', length(orangecrab.cor))),
+                    cor = c(bluecrab.cor, orangecrab.cor))
+ggplot(cor.df, aes(x = cor, fill = species)) +
+  geom_density(alpha = 0.5) +
+  scale_fill_manual(values = c('blue', 'orange'))
+
+mean(bluecrab.cor < orangecrab.cor)
+```
+
+The orange crab species appears to have a much higher correlation between its two measurements than the blue crab species.
+
+## 7.4
+
+```{r}
+agehw = as.matrix(read.table(url('http://www.stat.washington.edu/people/pdhoff/Book/Data/hwdata/agehw.dat')))
+colnames(agehw) = agehw[1, ]
+agehw = agehw[-1, ]
+agehw = matrix(as.numeric(agehw), nrow = 100)
+```
+
+### a
+
+With typical intuitions about life expectancy and age of marriage, I suspect
+that the ages of most of the married couples will fall between 25 and 80. There
+may be slight age differences among men and women, but nothing that I'm
+confident enough to to encode in my prior. Thus I will set $\boldsymbol{\mu}_0 = ((25 + 80) / 2, (25 + 80) / 2) = (52.5, 52.5)^T$
+
+I have no choice but to pick a semiconjugate prior distribution in this case,
+but it does seem intuitive that there are less married couples at ages 25 and 80
+than there are married couples around age 50, thus justifying a bell curve
+centered around $52.5$ with variance $13.75^2 \approx 189$ such that
+approximately 95\% of my prior falls within the range $(25, 80)$.
+
+I also have reason to believe the ages of the couples are quite tightly
+correlated, so knowing the above variance, I will aim for a prior correlation of
+$0.75$ Solving the correlation equation gives
+
+\begin{align}
+& 0.75 = \frac{\sigma_{1, 2}}{189} \\
+\implies& \sigma_{1, 2} = 141.75
+\end{align}
+
+So I will set $$\Lambda_0 = \begin{bmatrix} 189 & 141.75 \\ 141.75 & 189 \end{bmatrix} $$
+
+Like previous problems, for the variance, I will set $\mathbf{S}_0^{-1} =
+\Lambda_0$ and $\nu_0 = p + 2 = 4$. Note that this only loosely centers our
+covariance matrix prior on $\Lambda_0$, so I am being a bit conservative in
+terms of my belief in the variance and the correlation between the ages.
+
+```{r}
+Y = agehw
+p = ncol(agehw)
+n = nrow(agehw)
+ybar = colMeans(agehw)
+
+mu0 = rep(52.5, p)
+lambda0 = s0 = rbind(c(189, 141.75), c(141.75, 189))
+# nu0 = p + 2
+nu0 = p + 2 + 10
+```
+
+### b
+
+The wording of the question is interesting - I assume I'm supposed to sample a 
+fixed $\boldsymbol{\theta}, \Sigma$ and from there sample $100$ points all with 
+the same parameters. If I were to do this myself, I feel like I would sample a
+new data point for each sample of $\boldsymbol{\theta}, \Sigma$...
+
+In fact, because of that wording, I originally set $\nu_0 = p + 2 = 4$ to
+loosely center my prior. But given that this variance will often produce uncorrelated
+prior predictive datasets, I'm increasing $\nu_0$ a bit...
+
+After increasing $\nu_0$, I'm fairly comfortable with what these posterior
+predictive datasets look like.
+
+```{r}
+N = 100
+S = 12
+
+Y_preds = lapply(1:S, function(s) {
+  # Sample THETA according to prior
+  theta = mvrnorm(n = 1, mu0, lambda0)
+  sigma = inv(rWishart(1, nu0, inv(s0))[, , 1])
+  Y_s = mvrnorm(n = 100, theta, sigma)
+  data.frame(Y1 = Y_s[, 1], Y2 = Y_s[, 2], dataset = s)
+})
+
+Y_comb = do.call(rbind, Y_preds)
+
+ggplot(Y_comb, aes(x = Y1, y = Y2)) +
+  geom_point() +
+  facet_wrap(~ dataset)
+```
+
+### c
+
+```{r}
+S = 10000
+
+# Reuse this since we'll need to specify different priors
+do_mcmc = function(Y, mu0, lambda0, s0, nu0) {
+  ybar = colMeans(Y)
+  p = ncol(Y)
+  n = nrow(Y)
+
+  THETA = matrix(nrow = S, ncol = p)
+  SIGMA = array(dim = c(p, p, S))
+  
+  # Start with sigma sample
+  sigma = cov(Y)
+  
+  # Gibbs sampling
+  
+  # Also, inv = solve to make it more readable
+  inv = solve
+  
+  for (s in 1:S) {
+    # Update theta
+    lambdan = inv(inv(lambda0) + n * inv(sigma))
+    mun = lambdan %*% (inv(lambda0) %*% mu0 + n * inv(sigma) %*% ybar)
+    theta = mvrnorm(n = 1, mun, lambdan)
+    
+    # Update sigma
+    resid = t(Y) - c(theta)
+    stheta = resid %*% t(resid)
+    sn = s0 + stheta
+    sigma = inv(rWishart(1, nu0 + n, inv(sn))[, , 1])
+    
+    THETA[s, ] = theta
+    SIGMA[, , s] = sigma
+  }
+  
+  list(theta = THETA, sigma = SIGMA)
+}
+
+my_prior_mcmc = do_mcmc(agehw, mu0, lambda0, s0, nu0)
+THETA = my_prior_mcmc$theta
+SIGMA = my_prior_mcmc$sigma
+
+# For reuse later
+print_quantiles = function(THETA, SIGMA) {
+  print("Husband")
+  print(quantile(THETA[, 1], probs = c(0.025, 0.5, 0.975))) # Husband
+  print("Wife")
+  print(quantile(THETA[, 2], probs = c(0.025, 0.5, 0.975))) # Wife
+  cors = apply(SIGMA, MARGIN = 3, FUN = function(covmat) {
+    covmat[1, 2] / (sqrt(covmat[1, 1] * covmat[2, 2]))
+  })
+  print("Correlation")
+  print(quantile(cors, probs = c(0.025, 0.5, 0.975)))
+}
+
+print_quantiles(THETA, SIGMA)
+```
+
+### d
+
+I haven't done 7.2, but doing Jeffreys' prior and a "diffuse prior" below will
+still be helpful to see what effect prior information has.
+
+#### i
+
+```{r}
+THETA = matrix(nrow = S, ncol = p)
+SIGMA = array(dim = c(p, p, S))
+
+# Start with sigma sample
+sigma = cov(Y)
+
+# Gibbs sampling
+
+# Also, inv = solve to make it more readable
+inv = solve
+
+for (s in 1:S) {
+  # Update theta
+  theta = mvrnorm(n = 1, ybar, sigma / n)
+  
+  # Update sigma
+  resid = t(Y) - c(theta)
+  stheta = resid %*% t(resid)
+  sigma = inv(rWishart(1, n + 1, inv(stheta))[, , 1])
+  
+  THETA[s, ] = theta
+  SIGMA[, , s] = sigma
+}
+
+print_quantiles(THETA, SIGMA)
+```
+  
+#### ii
+Unit information prior (skipping)
+
+#### iii
+```{r}
+mu0 = rep(0, p)
+lambda0 = 10^5 * diag(p)
+s0 = 1000 * diag(p)
+nu0 = 3
+diffuse_mcmc = do_mcmc(agehw, mu0, lambda0, s0, nu0)
+print_quantiles(diffuse_mcmc$theta, diffuse_mcmc$sigma)
+```
+
+### e
+
+It doesn't really seem like the prior information matters because the sample 
+size is so large. Regardless of whether the prior is informative, the quantiles 
+and correlations end up quite similar. Maybe the diffuse prior is slightly 
+different, but it's not a big difference.
+
+If we have a smaller sample size, this may be different. Let's see what 
+happens if I truncate the dataset to the first 25 variables and rerun with my 
+informative prior and the diffuse prior:
+
+#### My prior
+
+```{r}
+mu0 = rep(52.5, p)
+lambda0 = s0 = rbind(c(189, 141.75), c(141.75, 189))
+# nu0 = p + 2
+nu0 = p + 2 + 10
+my_prior_mcmc_short = do_mcmc(agehw[1:25, ], mu0, lambda0, s0, nu0)
+print_quantiles(my_prior_mcmc_short$theta, my_prior_mcmc_short$sigma)
+```
+
+#### Diffuse prior
+
+```{r}
+mu0 = rep(0, p)
+lambda0 = 10^5 * diag(p)
+s0 = 1000 * diag(p)
+nu0 = 3
+diffuse_mcmc_short = do_mcmc(agehw[1:25, ], mu0, lambda0, s0, nu0)
+print_quantiles(diffuse_mcmc_short$theta, diffuse_mcmc_short$sigma)
+```
+
+In this case, the effect of the prior on correlation especially is easily 
+observed. The correlation for the diffuse prior is quite low, as it is being 
+dragged towards nothing.
