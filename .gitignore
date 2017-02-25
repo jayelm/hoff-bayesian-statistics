@@ -34,8 +34,6 @@ vignettes/*.pdf
 *.knit.md
 .Rproj.user
 
-# Build their own HTML, PDF files
-*.html
 *.pdf
 
 notes.txt
