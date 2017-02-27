@@ -548,3 +548,232 @@ around 1 and the magnitude represents the strength of our belief that $\gamma$
 (the proportion $\theta_B / \theta_A$) is 1. As expected, as our belief in that
 increases, the mean posterior difference between $\theta_B$ and $\theta_A$
 decreases.
+
+## 6.2
+
+```{r}
+glucose <- scan(url('http://www.stat.washington.edu/~pdhoff/Book/Data/hwdata/glucose.dat'))
+```
+
+### a
+
+```{r}
+qplot(glucose, geom = 'histogram')
+```
+
+
+Appears to be skewed right significantly.
+
+### b
+
+The likelihood is
+
+$$
+\begin{align}
+p(\boldsymbol{y} \mid \boldsymbol{x}, p, \theta_1, \theta_2, \sigma^2_1, \sigma^2_2) &= 
+\prod_{i = 1}^n p(y_i \mid x_i, p, \theta_1, \theta_2, \sigma^2_1, \sigma^2_2) \\
+&= \prod_{i = 1}^n \text{dnorm}(y_i, \theta_1, \sigma^2_1)^{x_i} \text{dnorm}(y_i, \theta_2, \sigma^2_2)^{1 - x_i} \\
+\end{align}
+$$
+
+#### $\boldsymbol{x}$
+
+First observe the probability that a single $X_i = 1$:
+
+$$
+\begin{align}
+P(X_i = 1 \mid y_i, p, \theta_1, \theta_2, \sigma^2_1, \sigma^2_2) &= \frac{P(X_i = 1 \mid p, \theta_1, \theta_2, \sigma^2_1, \sigma^2_2) \times p(y_i \mid X_i = 1, p, \theta_1, \theta_2, \sigma^2_1, \sigma^2_2)}{P(y_i \mid p, \theta_1, \theta_2, \sigma^2_1, \sigma^2_2)} \\
+&=
+\frac{P(X_i = 1 \mid p) \times p(y_i \mid X_i = 1, \theta_1, \sigma^2_1)}{P(X_i = 1 \mid p) \times p(y_i \mid X_i = 1, \theta_1, \sigma^2_1) + P(X_i = 0 \mid p) \times p(y_i \mid X_i = 0, \theta_2, \sigma^2_2)} \\
+&= \frac{p \times \text{dnorm}(y_i, \theta_1, \sigma^2_1)}{p \times \text{dnorm}(y_i, \theta_1, \sigma^2_1) + (1 - p) \times \text{dnorm}(y_i, \theta_2, \sigma^2_2)}
+\end{align}
+$$
+
+Since this is similar for $P(X_i = 0)$, we know
+
+$$
+x_i \sim \text{Bernoulli}\left(\frac{p \times \text{dnorm}(y_i, \theta_1, \sigma^2_1)}{p \times \text{dnorm}(y_i, \theta_1, \sigma^2_1) + (1 - p) \times \text{dnorm}(y_i, \theta_2, \sigma^2_2)}\right)
+$$
+
+#### $p$
+
+For this and later calculations, let $n_1 = \sum x_i$ (i.e. number of 1s in 
+$\boldsymbol{x}$) and $n_2 = n - n_1$ (i.e. number of 0s).
+
+$$
+\begin{align}
+p(p \mid \boldsymbol{x}, \boldsymbol{y}, \theta_1, \theta_2, \sigma^2_1, \sigma^2_2) &\propto p(p) \times p(\boldsymbol{x}, \boldsymbol{y}, \theta_1, \theta_2, \sigma^2_1, \sigma^2_2 \mid p) \\
+&\propto p(p) \times p(\boldsymbol{x} \mid p) p(\boldsymbol{y} \mid \boldsymbol{x}, \theta_1, \theta_2, \sigma^2_1, \sigma^2_2) p(\theta_1, \theta_2, \sigma^2_1, \sigma^2_2) \\
+&\propto p(p) \times p(\boldsymbol{x} \mid p) \\
+&\propto \text{dbeta}(p, a, b) \times \text{dbinom}(n_1, n, p) \\
+&\propto p^{a - 1} (1 - p)^{b - 1} \times p^{n_1} (1 - p)^{n_2} \\
+&= p^{a + n_1 - 1}(1 - p)^{b + n_2 - 1} \\
+&= \text{dbeta}(p, a + n_1, b + n_2)
+\end{align}
+$$
+
+#### $\theta_1$
+
+Let $\boldsymbol{y}_1 = \{y_i \in \boldsymbol{y} \; : \; x_i = 1 \}$ and
+$\boldsymbol{y}_2 = \{y_i \in \boldsymbol{y} \; : \; x_i = 0 \}$
+
+$$
+\begin{align}
+p(\theta_1 \mid \boldsymbol{x}, \boldsymbol{y}, p, \theta_2, \sigma^2_1, \sigma^2_2) &\propto p(\theta_1 \mid \boldsymbol{x}, p, \theta_2, \sigma^2_1, \sigma^2_2) \times p(\boldsymbol{y} \mid \boldsymbol{x}, p, \theta_1, \theta_2, \sigma^2_1, \sigma^2_2) \\
+&\propto p(\theta_1) \times \prod_{i=1}^n \left( \text{dnorm}(y_i, \theta_1, \sigma^2_1)^{x_i} \text{dnorm}(y_i, \theta_2, \sigma^2_2)^{1 - x_i} \right) \\
+&\propto \text{dnorm}(\theta_1, \mu_0, \tau^2_0) \times \prod_{i = 1}^n \text{dnorm}(y_i, \theta_1, \sigma^2_1)^{x_i} \\
+&\propto \text{dnorm}(\theta_1, \mu_0, \tau^2_0) \times \prod_{y \in \boldsymbol{y}_1} \text{dnorm}(y, \theta_1, \sigma^2_1) \\
+&\propto \exp \left(- \frac{1}{2 \tau^2_0} (\theta_1 - \mu_0)^2 \right) \times \prod_{y \in \boldsymbol{y}_1} \exp\left( -\frac{1}{2\sigma^2_1} (y - \theta_1)^2\right) \\
+&\propto \exp \left(- \frac{1}{2 \tau^2_0} (\theta_1 - \mu_0)^2 \right) \times \exp\left(-\frac{1}{2\sigma^2_1} \sum_{y \in \boldsymbol{y}_1} (y - \theta_1)^2 \right) \\
+&\propto \text{calculations from 5.2...} \\
+&\propto \mathcal{N}(\tau^2_{n , 1}, \mu_{n, 1})
+\end{align}
+$$
+
+where
+
+$$
+\begin{align}
+\tau^2_{n, 1} &= \frac{1}{\frac{1}{\tau^2_0} + \frac{n_1}{\sigma^2_1}} \\
+\mu_{n, 1} &= \frac{\frac{1}{\tau^2_0}\mu_0 + \frac{n_1}{\sigma^2_1} \bar{y}_{\cdot, 1}}{\frac{1}{\tau^2_0} + \frac{n_1}{\sigma^2_1}}
+\end{align}
+$$
+
+#### $\theta_2$
+
+$\theta_2 \mid \dots \sim \mathcal{N}(\mu_{n, 2}, \tau^2_{n, 2})$ like
+$\theta_1$ but with the subscripts switched from 1 to 2.
+
+#### $\sigma^2_1$
+
+As probably expected, this will look like inference for a standard normal model,
+except using only the data in group 1.
+
+$$
+\begin{align}
+p(\sigma^2_1 \mid \boldsymbol{x}, \boldsymbol{y}, p, \theta_1, \theta_2, \sigma^2_2) &\propto p(\sigma^2_1 \mid \boldsymbol{x}, p, \theta_1, \theta_2, \sigma^2_2) \times p(\boldsymbol{y} \mid \boldsymbol{x}, p, \theta_1, \theta_2, \sigma^2_1, \sigma^2_2) \\
+&\propto p(\sigma^2_1) \times \prod_{i=1}^n \left( \text{dnorm}(y_i, \theta_1, \sigma^2_1)^{x_i} \text{dnorm}(y_i, \theta_2, \sigma^2_2)^{1 - x_i} \right) \\
+&\propto \text{inverse-gamma}(\sigma^2_1, \nu_0, \sigma^2_0 \nu_0 / 2) \times \prod_{y \in \boldsymbol{y}_1} \text{dnorm}(y, \theta_1, \sigma^2_1) \\
+&\propto \exp \left((\sigma_1^2)^{-(\nu_0 / 2) - 1} \exp\left( -\frac{1}{\sigma^2_1} \sigma^2_0 \nu_0 / 2 \right) \right) \times (\sigma_1^2)^{-n / 2} \exp\left(-\frac{1}{2\sigma^2_1} \sum_{y \in \boldsymbol{y}_1} (y - \theta_1)^2 \right) \\
+&\propto \text{calculations from 6.3...} \\
+&\propto \text{inverse-gamma}(\nu_{n, 1} / 2, \sigma^2_{n, 1}(\theta_1) \nu_{n, 1} / 2)
+\end{align}
+$$
+
+where
+
+$$
+\begin{align}
+\nu_{n, 1} &= \nu_0 + n_1 \\
+\sigma^2_{n, 1}(\theta_1) &= \frac{1}{\nu_{n, 1}} \left[\nu_0 \sigma^2_0 + n_1 s^2_{n, 1}(\theta_1) \right]
+\end{align}
+$$
+
+#### $\sigma^2_2$
+
+Same as above, but with subscripts switched.
+
+### c
+
+```{r}
+Y = glucose
+n = length(Y)
+
+# Priors
+a = b = 1
+mu0 = 120
+t20 = 200
+s20 = 1000
+nu0 = 10
+
+S = 10000
+
+# Values we'd like to store. Don't care about xs, p, sigmas
+THETA1 = numeric(S)
+THETA2 = numeric(S)
+YPRED = numeric(S) # Posterior predictive
+
+# Starting values
+p = 0.5
+theta1 = theta2 = mean(Y)
+s21 = s22 = var(Y)
+
+# Gibbs sampling
+for (s in 1:S) {
+  # Sample X
+  # We calculate dnorm for each y so p1 and p2 are vectors
+  p1 = p * dnorm(Y, theta1, sqrt(s21))
+  p2 = (1 - p) * dnorm(Y, theta2, sqrt(s22))
+  bernoulli_p = p1 / (p1 + p2)
+  X = rbinom(n, 1, bernoulli_p)
+  
+  # With X sample, calcuate group-specific summary statistics
+  n1 = sum(X)
+  n2 = n - n1
+  y1 = Y[X == 1]
+  y2 = Y[X == 0]
+  ybar1 = mean(y1)
+  ybar2 = mean(y2)
+  yvar1 = var(y1)
+  yvar2 = var(y2)
+  
+  # Sample p
+  p = rbeta(1, a + n1, b + n2)
+  
+  # Sample thetas
+  t2n1 = 1 / (1 / t20 + n1 / s21)
+  mun1 = (mu0 / t20 + n1 * ybar1 / s21) / (1 / t20 + n1 / s21)
+  theta1 = rnorm(1, mun1, sqrt(t2n1))
+  
+  t2n2 = 1 / (1 / t20 + n2 / s22)
+  mun2 = (mu0 / t20 + n2 * ybar2 / s22) / (1 / t20 + n2 / s22)
+  theta2 = rnorm(1, mun2, sqrt(t2n2))
+
+  # Sample sigma^2s
+  nun1 = nu0 + n1
+  s2n1 = (nu0 * s20 + (n1 - 1) * yvar1 + n1 * (ybar1 - theta1)^2) / nun1
+  s21 = 1 / rgamma(1, nun1 / 2, s2n1 * nun1 / 2)
+
+  nun2 = nu0 + n2
+  s2n2 = (nu0 * s20 + (n2 - 1) * yvar2 + n2 * (ybar2 - theta2)^2) / nun2
+  s22 = 1 / rgamma(1, nun2 / 2, s2n2 * nun2 / 2)
+  
+  # Sample posterior predictive
+  xpred = runif(1) < p
+  ypred = ifelse(xpred, rnorm(1, theta1, sqrt(s21)), rnorm(1, theta2, sqrt(s22)))
+  
+  # Store values
+  THETA1[s] = theta1
+  THETA2[s] = theta2
+  YPRED[s] = ypred
+}
+```
+
+```{r}
+THETAMIN = pmin(THETA1, THETA2)
+THETAMAX = pmax(THETA1, THETA2)
+
+library(coda)
+
+acf(THETAMIN)
+effectiveSize(THETAMIN)
+
+acf(THETAMAX)
+effectiveSize(THETAMAX)
+```
+
+These samples are actually highly autocorrelated, hence the minimum effective
+sample sizes. But I'm not sure (?) the purpose of calculating the
+autocorrelation of the minimum and maximum $\theta$?
+
+### d
+
+```{r}
+YCOMP = rbind(data.frame(y = YPRED, dataset = 'predictive'), data.frame(y = Y, dataset = 'original'))
+ggplot(YCOMP, aes(x = y, fill = dataset)) +
+  geom_density(alpha = 0.5)
+```
+
+
+Based on the very close correspondence with the densities of the original and
+posterior predictive dataset, it seems like this mixture model fits very well.
