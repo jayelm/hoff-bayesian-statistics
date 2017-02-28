@@ -254,7 +254,7 @@ between the prediction errors.
 
 ### c
 
-```{r echo=FALSE}
+```{r}
 # Unnecessary code repeating here. Clean this up later w/ functions
 N = 100
 set.seed(1)

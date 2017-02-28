@@ -464,6 +464,58 @@ pred_error</code></pre></div>
 </div>
 <div id="c" class="section level3">
 <h3>c</h3>
+<div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r"><span class="co"># Unnecessary code repeating here. Clean this up later w/ functions</span>
+N =<span class="st"> </span><span class="dv">100</span>
+<span class="kw">set.seed</span>(<span class="dv">1</span>)
+pred_errors =<span class="st"> </span><span class="kw">t</span>(<span class="kw">sapply</span>(<span class="dv">1</span>:N, function(i) {
+  y =<span class="st"> </span>crime$y
+  X =<span class="st"> </span>crime %&gt;%<span class="st"> </span><span class="kw">select</span>(-y) %&gt;%<span class="st"> </span>as.matrix
+  train_i =<span class="st"> </span><span class="kw">sample.int</span>(<span class="kw">length</span>(y), <span class="dt">size =</span> <span class="kw">round</span>(<span class="kw">length</span>(y) /<span class="st"> </span><span class="dv">2</span>), <span class="dt">replace =</span> <span class="ot">FALSE</span>)
+  ytr =<span class="st"> </span>y[train_i]
+  Xtr =<span class="st"> </span>X[train_i, ]
+  yte =<span class="st"> </span>y[-train_i]
+  Xte =<span class="st"> </span>X[-train_i, ]
+  
+  <span class="co"># OLS</span>
+  beta_ols =<span class="st"> </span><span class="kw">inv</span>(<span class="kw">t</span>(Xtr) %*%<span class="st"> </span>Xtr) %*%<span class="st"> </span><span class="kw">t</span>(Xtr) %*%<span class="st"> </span>ytr
+  beta_ols
+  
+  y_ols =<span class="st"> </span>Xte %*%<span class="st"> </span>beta_ols
+  
+  pred_error_ols =<span class="st"> </span><span class="kw">sum</span>((yte -<span class="st"> </span>y_ols)^<span class="dv">2</span>) /<span class="st"> </span><span class="kw">length</span>(yte)
+  
+  <span class="co"># Bayes</span>
+  y =<span class="st"> </span>ytr
+  X =<span class="st"> </span>Xtr
+  
+  n =<span class="st"> </span><span class="kw">dim</span>(X)[<span class="dv">1</span>]
+  p =<span class="st"> </span><span class="kw">dim</span>(X)[<span class="dv">2</span>]
+  
+  g =<span class="st"> </span>n
+  nu0 =<span class="st"> </span><span class="dv">2</span>
+  s20 =<span class="st"> </span><span class="dv">1</span>
+  
+  S =<span class="st"> </span><span class="dv">1000</span>
+  
+  Hg =<span class="st"> </span>(g /<span class="st"> </span>(g +<span class="st"> </span><span class="dv">1</span>)) *<span class="st"> </span>X %*%<span class="st"> </span><span class="kw">inv</span>(<span class="kw">t</span>(X) %*%<span class="st"> </span>X) %*%<span class="st"> </span><span class="kw">t</span>(X)
+  SSRg =<span class="st"> </span><span class="kw">t</span>(y) %*%<span class="st"> </span>(<span class="kw">diag</span>(<span class="dv">1</span>, <span class="dt">nrow =</span> n) -<span class="st"> </span>Hg) %*%<span class="st"> </span>y
+  
+  s2 =<span class="st"> </span><span class="dv">1</span> /<span class="st"> </span><span class="kw">rgamma</span>(S, (nu0 +<span class="st"> </span>n) /<span class="st"> </span><span class="dv">2</span>, (nu0 *<span class="st"> </span>s20 +<span class="st"> </span>SSRg) /<span class="st"> </span><span class="dv">2</span>)
+  Vb =<span class="st"> </span>g *<span class="st"> </span><span class="kw">inv</span>(<span class="kw">t</span>(X) %*%<span class="st"> </span>X) /<span class="st"> </span>(g +<span class="st"> </span><span class="dv">1</span>)
+  Eb =<span class="st"> </span>Vb %*%<span class="st"> </span><span class="kw">t</span>(X) %*%<span class="st"> </span>y
+  
+  E =<span class="st"> </span><span class="kw">matrix</span>(<span class="kw">rnorm</span>(S *<span class="st"> </span>p, <span class="dv">0</span>, <span class="kw">sqrt</span>(s2)), S, p)
+  beta =<span class="st"> </span><span class="kw">t</span>(<span class="kw">t</span>(E %*%<span class="st"> </span><span class="kw">chol</span>(Vb)) +<span class="st"> </span><span class="kw">c</span>(Eb))
+  
+  beta_bayes =<span class="st"> </span><span class="kw">as.matrix</span>(<span class="kw">colMeans</span>(beta))
+  
+  y_bayes =<span class="st"> </span>Xte %*%<span class="st"> </span>beta_bayes
+  
+  pred_error_bayes =<span class="st"> </span><span class="kw">sum</span>((yte -<span class="st"> </span>y_bayes)^<span class="dv">2</span>) /<span class="st"> </span><span class="kw">length</span>(yte)
+
+  <span class="kw">c</span>(pred_error_ols, pred_error_bayes)
+})) %&gt;%<span class="st"> </span>as.data.frame
+<span class="kw">colnames</span>(pred_errors) =<span class="st"> </span><span class="kw">c</span>(<span class="st">'ols'</span>, <span class="st">'bayes'</span>)</code></pre></div>
 <p>Here’s a plot of the density of <span class="math inline">\(\text{err}_{\text{Bayes}} - \text{err}_{\text{ols}}\)</span>. If this is less than 0, then the Bayes estimator did better than the OLS estimator:</p>
 <div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r">pred_diff =<span class="st"> </span>pred_errors %&gt;%<span class="st"> </span><span class="kw">transmute</span>(<span class="st">`</span><span class="dt">bayes - ols</span><span class="st">`</span> =<span class="st"> </span>bayes -<span class="st"> </span>ols)
 
