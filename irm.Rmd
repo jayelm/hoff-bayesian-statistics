@@ -13,10 +13,10 @@ output:
 
 <script type="text/x-mathjax-config">
 MathJax.Hub.Config({
-  TeX: { 
+  TeX: {
       equationNumbers: {
             autoNumber: "all"
-      } 
+      }
   }
 });
 </script>
@@ -31,13 +31,29 @@ library(reshape)
 
 <!-- Begin writing -->
 
-# The Infinite Relational Modell
+# The Infinite Relational Model
 
-For this last project, I coded up a simple version of Charles Kemp's Infinite Relational Model (IRM) in R. Code is in `irm.R`.
+What happens when you want to cluster your data, but the number of clusters is
+unknown? While some approaches involve fitting several models with a varying
+number of clusters to your data and comparing model fit statistics, the Bayesian
+approach is to specify a model which is allowed to dynamically grow the number
+of clusters as the complexity of the data warrants.
+
+The **Infinite Relational Model** is the prototypical example of such a model.
+
+> [Kemp et al. (2006). Learning Systems of Concepts with an Infinite Relational Model](http://web.mit.edu/cocosci/Papers/Kemp-etal-AAAI06.pdf)
+
+For this last project, I coded up a simple version of Charles Kemp's Infinite
+Relational Model (IRM) in `irm.R` to co-cluster rows and columns of a simple
+2-dimensional binary relation.
+
+## Demo
 
 ```{r}
 source('irm.R')
 ```
+
+### Sanity check
 
 As a sanity check, we use the toy matrix in the original paper:
 
@@ -61,3 +77,10 @@ Z = irm(R, sweeps = 1000)
 top.n(Z)
 plot.R(R, mode.irm(Z))
 ```
+
+This successfully finds the clusters of rows and columns that correspond to the original paper.
+
+<!--
+TODO: add 50 animals data
+### 50 animals
+-->
