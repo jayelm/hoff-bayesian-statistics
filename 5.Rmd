@@ -811,7 +811,7 @@ prob = sapply(k0nu0, function(p) {
   s2n.a = (1 / nun.a) * (p * s20 + (n.a - 1) * s2.a + ((p * n.a) / kn.a) * (ybar.a - mu0)^2)
   
   s2.a.mc = 1 / rgamma(10000, nun.a / 2, s2n.a * nun.a / 2)
-  theta.a.mc = rnorm(10000, mun.a, sqrt(s2.a.mc))
+  theta.a.mc = rnorm(10000, mun.a, sqrt(s2.a.mc/kn.a))
   
   kn.b = p + n.b
   nun.b = p + n.b
@@ -819,7 +819,7 @@ prob = sapply(k0nu0, function(p) {
   s2n.b = (1 / nun.b) * (p * s20 + (n.b - 1) * s2.b + ((p * n.b) / kn.b) * (ybar.b - mu0)^2)
   
   s2.b.mc = 1 / rgamma(10000, nun.b / 2, s2n.b * nun.b / 2)
-  theta.b.mc = rnorm(10000, mun.b, sqrt(s2.b.mc))
+  theta.b.mc = rnorm(10000, mun.b, sqrt(s2.b.mc/kn.b))
   
   mean(theta.a.mc < theta.b.mc)
 })
